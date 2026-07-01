@@ -1,7 +1,7 @@
 /* main.js - Orchestration Entry Point for MundialLibre Web App */
 
 import { ENCRYPTED_TOKEN, decrypt } from './modules/security.js';
-import { playIntroAnimations } from './modules/animations.js';
+import { playIntroAnimations, triggerGoalCelebration } from './modules/animations.js';
 import { loadMatchMetadata } from './modules/live-scores.js';
 import { initPlayer } from './modules/player-shaka.js';
 import { setupUIControls } from './modules/ui-controls.js';
@@ -53,4 +53,9 @@ document.addEventListener("DOMContentLoaded", () => {
         elements.loader,
         elements.volumeSlider
     );
+
+    // Preview goal celebration 2.5s after load
+    setTimeout(() => {
+        triggerGoalCelebration();
+    }, 2500);
 });
