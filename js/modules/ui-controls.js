@@ -256,4 +256,38 @@ export function setupUIControls(elements) {
             }
         }
     });
+
+    // Auto-hide controls and mouse cursor logic after 2.5 seconds of inactivity
+    let controlsTimeout = null;
+
+    function showPlayerControls() {
+        playerContainer.classList.add("show-controls");
+        playerContainer.classList.remove("hide-cursor");
+        
+        clearTimeout(controlsTimeout);
+        controlsTimeout = setTimeout(() => {
+            // Only hide controls if video is playing and quality menu is not open
+            if (!video.paused && !qualityMenu.classList.contains("active")) {
+                playerContainer.classList.remove("show-controls");
+                playerContainer.classList.add("hide-cursor");
+            }
+        }, 2500);
+    }
+
+    // Monitor user interaction to toggle active state
+    playerContainer.addEventListener("mousemove", showPlayerControls);
+    playerContainer.addEventListener("click", showPlayerControls);
+    playerContainer.addEventListener("touchstart", showPlayerControls);
+    document.addEventListener("keydown", showPlayerControls);
+
+    // Initial call
+    showPlayerControls();
+
+    // Synchronize visibility on video state changes
+    video.addEventListener("play", showPlayerControls);
+    video.addEventListener("pause", () => {
+        playerContainer.classList.add("show-controls");
+        playerContainer.classList.remove("hide-cursor");
+        clearTimeout(controlsTimeout);
+    });
 }

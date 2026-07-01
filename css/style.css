@@ -325,10 +325,13 @@ body {
     pointer-events: auto;
 }
 
-.player-wrapper:hover .custom-player-controls,
-.player-wrapper.touch-active .custom-player-controls {
+.player-wrapper.show-controls .custom-player-controls {
     opacity: 1;
     transform: translateY(0);
+}
+
+.player-wrapper.hide-cursor {
+    cursor: none;
 }
 
 /* Custom Seekbar */
