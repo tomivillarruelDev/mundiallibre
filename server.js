@@ -33,6 +33,11 @@ const server = http.createServer((req, res) => {
     fs.readFile(filePath, (error, content) => {
         if (error) {
             if (error.code === 'ENOENT') {
+                if (safeUrl === '/match.json') {
+                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({}), 'utf-8');
+                    return;
+                }
                 console.log(`[404] No encontrado: ${filePath}`);
                 res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
                 res.end('Error 404: Archivo no encontrado');

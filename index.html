@@ -3,8 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MundialLibre - Transmisión en vivo de fútbol en alta definición.">
-    <title>MundialLibre | En Vivo</title>
+    <meta name="description" content="Mundial Libre - Transmisión en vivo de partidos de fútbol en alta definición y baja latencia. Disfrutá de la Copa Mundial, Copa América y Eurocopa de forma gratuita.">
+    <meta name="keywords" content="futbol libre, mundial libre, futbol en vivo, copa america en vivo, eurocopa en vivo, ver futbol gratis hd, transmision futbol online, dsports en vivo">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://mundiallibre.com/">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://mundiallibre.com/">
+    <meta property="og:site_name" content="Mundial Libre">
+    <meta property="og:title" content="Mundial Libre | Fútbol en Vivo HD">
+    <meta property="og:description" content="Mundial Libre - Transmisión en vivo de partidos de fútbol en alta definición y baja latencia. Disfrutá de la Copa Mundial, Copa América y Eurocopa de forma gratuita.">
+    <meta property="og:image" content="https://mundiallibre.com/assets/logo.svg">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://mundiallibre.com/">
+    <meta name="twitter:title" content="Mundial Libre | Fútbol en Vivo HD">
+    <meta name="twitter:description" content="Mundial Libre - Transmisión en vivo de partidos de fútbol en alta definición y baja latencia. Disfrutá de la Copa Mundial, Copa América y Eurocopa de forma gratuita.">
+    <meta name="twitter:image" content="https://mundiallibre.com/assets/logo.svg">
+
+    <!-- Schema.org JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Mundial Libre",
+      "alternateName": "MundialLibre",
+      "url": "https://mundiallibre.com/",
+      "description": "Mundial Libre es la plataforma líder para ver fútbol en vivo en alta definición y baja latencia de forma gratuita.",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://mundiallibre.com/?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    
+    <title>Mundial Libre | Fútbol en Vivo HD</title>
     
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,10 +48,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- CSS Stylesheet -->
-    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="stylesheet" href="css/style.css?v=25">
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="icon" type="image/svg" href="assets/favicon.svg">
     
     <!-- Shaka Player CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
@@ -30,7 +66,7 @@
         <!-- TOP LOGO HEADER -->
         <header class="app-header">
             <div class="brand-logo">
-                <img src="logo.jpg" alt="MundialLibre Logo" class="brand-logo-img">
+                <img src="assets/logo.svg" alt="Logo de Mundial Libre" class="brand-logo-img">
                 <span class="brand-logo-text">Mundial<span class="highlight">Libre</span></span>
             </div>
             
@@ -43,9 +79,6 @@
         <!-- MAIN STREAMING CONTENT -->
         <main class="main-content">
             <div class="player-container-relative">
-                <!-- Stadium Glow Background Light -->
-                <div class="stadium-glow glow-1"></div>
-                
                 <div class="player-wrapper animate-player" id="player-container">
                 <!-- Loading overlay -->
                 <div class="player-loader" id="player-loader">
@@ -105,12 +138,6 @@
                                     <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.05" value="0.8">
                                 </div>
                             </div>
-
-                            <div class="time-display">
-                                <span id="current-time">00:00</span>
-                                <span class="time-separator">/</span>
-                                <span id="duration">VIVO</span>
-                            </div>
                         </div>
 
                         <div class="right-controls">
@@ -149,10 +176,10 @@
 
         <!-- Signal description details -->
             <div class="signal-details animate-details">
-                <h2 class="signal-subtitle">Copa Mundial <span class="dot">•</span> <span class="live">En vivo</span></h2>
-                <h1 class="signal-title">México vs Ecuador</h1>
+                <h2 class="signal-subtitle">MundialLibre <span class="dot">•</span> <span class="live">En vivo</span></h2>
+                <h1 class="signal-title">Señal en Vivo <span class="match-timer-badge" style="display: none;"></span></h1>
                 <p class="signal-desc">
-                    Disfrutá el partido en alta definición y baja latencia.
+                    Disfrutá de la transmisión en alta definición y baja latencia. Los partidos y eventos en vivo se actualizarán automáticamente.
                 </p>
                 <div class="signal-specs">
                     <span class="spec-tag">
@@ -177,12 +204,17 @@
 
         <!-- FOOTER -->
         <footer class="app-footer">
-            <p>&copy; 2026 MundialLibre. Todos los derechos reservados.</p>
+            <p>&copy; 2026 Mundial Libre. Todos los derechos reservados.</p>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; color: var(--text-secondary); margin-top: 10px;">
+                <img src="assets/tomas_logo.png" alt="Logo de Tomás Villarruel" style="height: 18px; width: auto; object-fit: contain; vertical-align: middle;">
+                <span style="opacity: 0.3;">|</span>
+                <span style="font-weight: 700; letter-spacing: 0.2px;">Powered by <a href="https://www.linkedin.com/in/tomasvillarruel/" target="_blank" rel="noopener noreferrer" style="color: var(--color-accent-yellow); text-decoration: none; font-weight: 700; transition: color var(--transition-fast);" onmouseover="this.style.color='#FFFFFF'" onmouseout="this.style.color='var(--color-accent-yellow)'">Tomás Villarruel</a></span>
+            </div>
         </footer>
         
     </div>
 
-    <!-- Main JavaScript App Code -->
-    <script src="app.js"></script>
+    <!-- Main JavaScript App Code (Modular ES6) -->
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>

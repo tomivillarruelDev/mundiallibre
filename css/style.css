@@ -78,19 +78,21 @@ body {
     z-index: 2;
 }
 
-.stadium-glow {
+/* Stadium Glow Background Light rendered as a pseudo-element behind the player wrapper */
+.player-container-relative::before {
+    content: '';
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
-    width: 120%; /* Slightly narrower for smooth falloff */
+    transform: translate(-50%, -50%) translateZ(0);
+    width: 120%;
     height: 130%;
     border-radius: 50%;
     pointer-events: none;
-    z-index: -1;
-    opacity: 0.35; /* Softened opacity */
+    z-index: 1; /* Rendered below .player-wrapper (z-index: 2) */
+    opacity: 0.35;
     background: radial-gradient(circle, rgba(255, 230, 0, 0.3) 0%, rgba(255, 230, 0, 0.05) 60%, transparent 80%);
-    filter: blur(150px); /* Highly diffused, soft light */
+    filter: blur(150px);
 }
 
 /* ==========================================
@@ -116,7 +118,7 @@ body {
     justify-content: space-between;
     align-items: center;
     background: transparent;
-    border: none;
+    border-bottom: 1px solid var(--color-border); /* Mini separador como el footer */
     border-radius: 0;
     padding: 0;
     box-shadow: none;
@@ -187,6 +189,9 @@ body {
 
 .player-wrapper {
     position: relative;
+    z-index: 2;
+    transform: translate3d(0, 0, 0);
+    isolation: isolate;
     width: 100%;
     aspect-ratio: 16 / 9;
     max-height: 675px; /* Altura del player: 675px (16:9) */
@@ -589,6 +594,25 @@ body {
     line-height: 1.1;
 }
 
+.match-timer-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 230, 0, 0.1);
+    border: 1px solid rgba(255, 230, 0, 0.35);
+    color: var(--color-accent-yellow); /* #FFE600 */
+    padding: 6px 14px;
+    border-radius: var(--radius-sm); /* 8px or similar rounded */
+    font-size: 18px; /* Slightly smaller than title for hierarchy */
+    font-weight: 700;
+    font-family: monospace;
+    margin-left: 18px;
+    vertical-align: middle;
+    box-shadow: 0px 4px 15px rgba(255, 230, 0, 0.08);
+    letter-spacing: normal;
+    text-transform: uppercase;
+}
+
 .signal-desc {
     font-size: 18px; /* Body: 18px */
     font-weight: 400; /* Body weight: 400 */
@@ -684,4 +708,37 @@ body {
 /* Animations */
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+/* 1. Importamos Poppins desde Google Fonts para tener la geometría exacta */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@800;900&display=swap');
+
+/* Contenedor principal del texto del logo */
+.brand-logo-text {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 900; /* Usamos el peso más grueso disponible */
+    font-size: 2.8rem; 
+    color: #2D3277; /* Azul oscuro exacto corporativo */
+    text-transform: lowercase; /* Forzar minúsculas */
+    
+    /* EL TRUCO CLAVE: Ajuste de tracking (interletrado) muy ajustado */
+    letter-spacing: -0.05em; 
+    
+    /* Suavizado de fuentes para que se vea como un vector limpio */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    
+    display: inline-flex;
+    align-items: center;
+    line-height: 0.9;
+}
+
+/* Estilo específico para "libre" */
+.brand-logo-text .highlight {
+    color: #009EE3; /* Azul brillante de Mercado Libre */
+    font-weight: 900;
+    
+    /* En la fuente original, la 'l' de libre se pega casi por completo 
+       a la última letra de la palabra anterior. Ajustamos esto acá: */
+    margin-left: -0.02em; 
 }
