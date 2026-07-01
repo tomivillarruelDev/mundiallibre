@@ -78,22 +78,7 @@ body {
     z-index: 2;
 }
 
-/* Stadium Glow Background Light rendered as a pseudo-element behind the player wrapper */
-.player-container-relative::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) translateZ(0);
-    width: 120%;
-    height: 130%;
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 1; /* Rendered below .player-wrapper (z-index: 2) */
-    opacity: 0.35;
-    background: radial-gradient(circle, rgba(255, 230, 0, 0.3) 0%, rgba(255, 230, 0, 0.05) 60%, transparent 80%);
-    filter: blur(150px);
-}
+/* Stadium Glow - applied via box-shadow on .player-wrapper to avoid GPU compositing issues with filter:blur */
 
 /* ==========================================
    APP CONTAINER LAYOUT (1440px wide viewport specs)
@@ -190,15 +175,17 @@ body {
 .player-wrapper {
     position: relative;
     z-index: 2;
-    transform: translate3d(0, 0, 0);
-    isolation: isolate;
     width: 100%;
     aspect-ratio: 16 / 9;
     max-height: 675px; /* Altura del player: 675px (16:9) */
     background-color: #000000;
-    border-radius: var(--radius-lg); /* Radios: 24px Todos los componentes */
+    border-radius: var(--radius-lg); /* Radios: 24px */
     overflow: hidden;
-    box-shadow: 0px 20px 60px rgba(255, 230, 0, 0.15); /* Glow detrás del player */
+    /* Yellow stadium glow via box-shadow (avoids filter:blur GPU compositing issues) */
+    box-shadow:
+        0px 20px 60px rgba(255, 230, 0, 0.15),
+        0px 0px 120px 40px rgba(255, 230, 0, 0.06),
+        0px 0px 200px 80px rgba(255, 230, 0, 0.03);
     border: 1px solid var(--color-border);
     transition: var(--transition-smooth);
 }
