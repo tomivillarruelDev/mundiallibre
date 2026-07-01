@@ -54,15 +54,15 @@
 
     <title>Mundial Libre | Fútbol en Vivo HD</title>
 
-    <!-- Google Fonts: Inter -->
+    <!-- Google Fonts: Urbanist -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700;800;900&display=swap"
       rel="stylesheet" />
 
     <!-- CSS Stylesheet -->
-    <link rel="stylesheet" href="css/style.css?v=34" />
+    <link rel="stylesheet" href="css/style.css?v=46" />
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg" href="assets/favicon.svg" />
@@ -80,14 +80,13 @@
     <!-- MODERN STICKY NAVBAR (full-width, outside app-container) -->
     <header class="app-header" id="app-navbar">
       <div class="navbar-inner">
-        <a href="/" class="brand-logo" id="brand-home-link">
+        <a href="/" class="brand-logo" id="brand-home-link" style="display: flex; align-items: center; border: none; background: transparent; padding: 0; gap: 12px; text-decoration: none;">
+          <img src="assets/logo.svg" alt="Logo de Mundial Libre" class="brand-logo-img" style="height: 48px; width: 48px; object-fit: contain; border-radius: 12px;" />
           <img
-            src="assets/logo.svg"
-            alt="Logo de Mundial Libre"
-            class="brand-logo-img" />
-          <span class="brand-logo-text"
-            >mundial<span class="highlight">libre</span></span
-          >
+            src="assets/mundiallibre.svg"
+            alt="Mundial Libre Logo"
+            class="brand-logo-text-img"
+            style="height: 44px; width: auto; object-fit: contain; display: block;" />
         </a>
 
         <div class="navbar-right">
@@ -104,6 +103,7 @@
       <!-- MAIN STREAMING CONTENT -->
       <main class="main-content">
         <div class="player-container-relative">
+          <div class="player-glow-backdrop"></div>
           <div class="player-wrapper animate-player" id="player-container">
             <!-- Loading overlay -->
             <div class="player-loader" id="player-loader">
@@ -262,8 +262,9 @@
 
         <!-- Signal description details -->
         <div class="signal-details animate-details">
-          <h2 class="signal-subtitle">
-            MundialLibre <span class="dot">•</span>
+          <h2 class="signal-subtitle" style="display: flex; align-items: center; gap: 8px;">
+            <img src="assets/mundiallibre.svg" alt="Mundial Libre" style="height: 45px; width: auto; object-fit: contain; display: block;" />
+            <span class="dot">•</span>
             <span class="live">En vivo</span>
           </h2>
           <h1 class="signal-title">Señal en Vivo</h1>

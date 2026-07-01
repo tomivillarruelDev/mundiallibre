@@ -40,7 +40,15 @@ export function updateMetadata(title, subtitle, description) {
     if (subtitle) {
         const subtitleEl = document.querySelector(".signal-subtitle");
         if (subtitleEl) {
-            subtitleEl.innerHTML = `${subtitle} <span class="dot">•</span> <span class="live">En vivo</span>`;
+            if (subtitle === "Mundial Libre") {
+                subtitleEl.innerHTML = `<img src="assets/mundiallibre.svg" alt="Mundial Libre" style="height: 45px; width: auto; object-fit: contain; display: block;"> <span class="dot">•</span> <span class="live">En vivo</span>`;
+                subtitleEl.style.display = "flex";
+                subtitleEl.style.alignItems = "center";
+                subtitleEl.style.gap = "8px";
+            } else {
+                subtitleEl.innerHTML = `${subtitle} <span class="dot">•</span> <span class="live">En vivo</span>`;
+                subtitleEl.style.display = "block";
+            }
         }
     }
     if (description) {
@@ -160,7 +168,7 @@ export async function detectLiveMatch(urlTitle) {
 export function loadMatchMetadata(activeConfig) {
     // Default Fallbacks
     let defaultTitle = "Señal en Vivo";
-    let defaultSubtitle = "MundialLibre";
+    let defaultSubtitle = "Mundial Libre";
     let defaultDesc = "Disfrutá de la transmisión en alta definición y baja latencia. Los partidos y eventos en vivo se actualizarán automáticamente.";
 
     // Option A: Decrypted config parameters
