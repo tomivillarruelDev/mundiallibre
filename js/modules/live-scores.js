@@ -5,15 +5,15 @@
  * @param {string|null} timeText Time text from ESPN (e.g. "41'", "Entretiempo") or null to hide
  */
 export function updateTimerBadge(timeText) {
-    const badgeEl = document.querySelector(".match-timer-badge");
-    if (!badgeEl) return;
-
-    if (timeText) {
-        badgeEl.textContent = timeText;
-        badgeEl.style.display = "inline-flex";
-    } else {
-        badgeEl.style.display = "none";
-    }
+    const badges = document.querySelectorAll(".match-timer-badge");
+    badges.forEach(badgeEl => {
+        if (timeText) {
+            badgeEl.textContent = timeText;
+            badgeEl.style.display = "inline-flex";
+        } else {
+            badgeEl.style.display = "none";
+        }
+    });
 }
 
 /**
@@ -64,9 +64,18 @@ export async function detectLiveMatch(urlTitle) {
             const liveEvent = data.events && data.events.find(ev => ev.status?.type?.state === 'in');
             if (liveEvent) {
                 const comp = liveEvent.competitions[0];
-                const homeTeam = comp.competitors.find(c => c.homeAway === 'home')?.team?.displayName;
-                const awayTeam = comp.competitors.find(c => c.homeAway === 'away')?.team?.displayName;
+                const homeCompetitor = comp.competitors.find(c => c.homeAway === 'home');
+                const awayCompetitor = comp.competitors.find(c => c.homeAway === 'away');
+
+                const homeTeam = homeCompetitor?.team?.displayName;
+                const awayTeam = awayCompetitor?.team?.displayName;
                 
+                const homeScore = homeCompetitor?.score ?? "0";
+                const awayScore = awayCompetitor?.score ?? "0";
+
+                const homeLogo = homeCompetitor?.team?.logo || 'assets/logo.svg';
+                const awayLogo = awayCompetitor?.team?.logo || 'assets/logo.svg';
+
                 const matchName = homeTeam && awayTeam ? `${homeTeam} vs ${awayTeam}` : liveEvent.name;
                 const leagueName = data.leagues[0].name;
                 const matchDetail = liveEvent.status.type.detail;
@@ -77,6 +86,29 @@ export async function detectLiveMatch(urlTitle) {
                     `Disfrutá el partido en vivo de la ${leagueName}.`
                 );
 
+                // Update dynamic scoreboard widget
+                const scoreContainer = document.querySelector(".live-scoreboard-container");
+                const titleEl = document.querySelector(".signal-title");
+                if (scoreContainer && titleEl) {
+                    titleEl.style.display = "block";
+                    scoreContainer.style.display = "inline-flex";
+                    
+                    const homeLogoEl = scoreContainer.querySelector(".home-logo");
+                    const awayLogoEl = scoreContainer.querySelector(".away-logo");
+                    if (homeLogoEl) homeLogoEl.src = homeLogo;
+                    if (awayLogoEl) awayLogoEl.src = awayLogo;
+                    
+                    const homeNameEl = scoreContainer.querySelector(".home-name");
+                    const awayNameEl = scoreContainer.querySelector(".away-name");
+                    if (homeNameEl) homeNameEl.textContent = homeTeam;
+                    if (awayNameEl) awayNameEl.textContent = awayTeam;
+                    
+                    const homeScoreEl = scoreContainer.querySelector(".home-score-val");
+                    const awayScoreEl = scoreContainer.querySelector(".away-score-val");
+                    if (homeScoreEl) homeScoreEl.textContent = homeScore;
+                    if (awayScoreEl) awayScoreEl.textContent = awayScore;
+                }
+
                 // Update the timer badge with the exact API detail
                 updateTimerBadge(matchDetail);
                 return true;
@@ -86,6 +118,14 @@ export async function detectLiveMatch(urlTitle) {
         }
     }
     
+    // Hide the scoreboard container if no live match was found
+    const scoreContainer = document.querySelector(".live-scoreboard-container");
+    const titleEl = document.querySelector(".signal-title");
+    if (scoreContainer && titleEl) {
+        scoreContainer.style.display = "none";
+        titleEl.style.display = "block";
+    }
+
     // Hide the badge if no live match was found
     updateTimerBadge(null);
     return false;

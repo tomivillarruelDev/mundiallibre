@@ -48,7 +48,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- CSS Stylesheet -->
-    <link rel="stylesheet" href="css/style.css?v=25">
+    <link rel="stylesheet" href="css/style.css?v=27">
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg" href="assets/favicon.svg">
@@ -177,7 +177,24 @@
         <!-- Signal description details -->
             <div class="signal-details animate-details">
                 <h2 class="signal-subtitle">MundialLibre <span class="dot">•</span> <span class="live">En vivo</span></h2>
-                <h1 class="signal-title">Señal en Vivo <span class="match-timer-badge" style="display: none;"></span></h1>
+                <h1 class="signal-title">Señal en Vivo</h1>
+
+                <div class="live-scoreboard-container" style="display: none;">
+                    <div class="scoreboard-team">
+                        <img class="team-logo home-logo" src="" alt="Escudo local">
+                        <span class="team-name home-name">Local</span>
+                    </div>
+                    <div class="scoreboard-score">
+                        <span class="score-num home-score-val">0</span>
+                        <span class="score-divider">-</span>
+                        <span class="score-num away-score-val">0</span>
+                    </div>
+                    <div class="scoreboard-team">
+                        <span class="team-name away-name">Visitante</span>
+                        <img class="team-logo away-logo" src="" alt="Escudo visitante">
+                    </div>
+                    <span class="match-timer-badge" style="display: none;"></span>
+                </div>
                 <p class="signal-desc">
                     Disfrutá de la transmisión en alta definición y baja latencia. Los partidos y eventos en vivo se actualizarán automáticamente.
                 </p>
