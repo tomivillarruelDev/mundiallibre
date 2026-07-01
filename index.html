@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MundialLibre - Transmisión en vivo de fútbol en alta definición.">
+    <title>MundialLibre | En Vivo</title>
+    
+    <!-- Google Fonts: Outfit (Titulares) e Inter (Lectura) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- CSS Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Shaka Player CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
+    
+    <!-- GSAP for Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+<body>
+    <!-- Stadium Glow Background Lights -->
+    <div class="stadium-glow glow-1"></div>
+    <div class="stadium-glow glow-2"></div>
+    
+    <div class="app-container">
+        <!-- TOP LOGO HEADER -->
+        <header class="app-header">
+            <div class="brand-logo">
+                <svg viewBox="0 0 250 45" class="logo-svg">
+                    <defs>
+                        <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#00f0ff" />
+                            <stop offset="100%" stop-color="#00ff87" />
+                        </linearGradient>
+                    </defs>
+                    <!-- Stylized Football/Globe Icon -->
+                    <g transform="translate(10, 5)">
+                        <circle cx="16" cy="16" r="14" fill="none" stroke="url(#logo-grad)" stroke-width="2.5"/>
+                        <path d="M6 16 C 6 10, 26 10, 26 16 C 26 22, 6 22, 6 16" fill="none" stroke="url(#logo-grad)" stroke-width="1.5"/>
+                        <path d="M16 6 C 10 6, 10 26, 16 26 C 22 26, 22 6, 16 6" fill="none" stroke="url(#logo-grad)" stroke-width="1.5"/>
+                        <line x1="16" y1="2" x2="16" y2="30" stroke="url(#logo-grad)" stroke-width="1.5"/>
+                        <line x1="2" y1="16" x2="30" y2="16" stroke="url(#logo-grad)" stroke-width="1.5"/>
+                    </g>
+                    <text x="50" y="30" font-family="'Outfit', sans-serif" font-weight="800" font-size="24" fill="#ffffff">Mundial</text>
+                    <text x="142" y="30" font-family="'Outfit', sans-serif" font-weight="800" font-size="24" fill="url(#logo-grad)">Libre</text>
+                </svg>
+            </div>
+            
+            <div class="signal-badge">
+                <span class="live-dot"></span>
+                <span class="live-text">SEÑAL EN VIVO</span>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT: STREAM PLAYER CENTERED -->
+        <main class="main-content">
+            <div class="player-wrapper animate-player" id="player-container">
+                <!-- Loading overlay -->
+                <div class="player-loader" id="player-loader">
+                    <div class="spinner">
+                        <div class="spinner-circle"></div>
+                    </div>
+                    <p class="loader-text">Conectando con la señal en vivo...</p>
+                </div>
+
+                <!-- Video Element -->
+                <video id="video-player" crossorigin="anonymous" playsinline></video>
+
+                <!-- Fallback Iframe (Used when Shaka Player / DRM fails) -->
+                <iframe id="iframe-fallback" style="display: none; width: 100%; height: 100%; border: none;" allow="autoplay; encrypted-media; fullscreen" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+
+
+
+                <!-- Big Play/Pause Center HUD Overlay -->
+                <div class="center-play-hud" id="center-play-hud">
+                    <div class="hud-circle">
+                        <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor" class="hud-play-icon">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- CUSTOM PLAYER CONTROLS OVERLAY -->
+                <div class="custom-player-controls" id="player-controls">
+                    <!-- Progress bar -->
+                    <div class="progress-bar-container" id="timeline-container">
+                        <div class="progress-bar-hover-zone"></div>
+                        <div class="progress-bar-bg"></div>
+                        <div class="progress-bar-buffer" id="buffer-bar"></div>
+                        <div class="progress-bar-play" id="play-bar"></div>
+                        <div class="progress-bar-scrubber" id="scrubber-dot"></div>
+                    </div>
+
+                    <!-- Buttons Row -->
+                    <div class="controls-buttons-row">
+                        <div class="left-controls">
+                            <button class="control-btn" id="play-btn" aria-label="Play/Pausa">
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" id="play-icon">
+                                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                                </svg>
+                            </button>
+                            
+                            <button class="control-btn" id="live-sync-btn">
+                                <span class="sync-dot"></span>
+                                <span class="sync-text">DIRECTO</span>
+                            </button>
+
+                            <div class="volume-control">
+                                <button class="control-btn" id="mute-btn" aria-label="Silenciar">
+                                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" id="volume-icon">
+                                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                                    </svg>
+                                </button>
+                                <div class="volume-slider-container">
+                                    <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.05" value="0.8">
+                                </div>
+                            </div>
+
+                            <div class="time-display">
+                                <span id="current-time">00:00</span>
+                                <span class="time-separator">/</span>
+                                <span id="duration">VIVO</span>
+                            </div>
+                        </div>
+
+                        <div class="right-controls">
+                            <div class="quality-selector-container">
+                                <button class="control-btn" id="quality-btn" title="Ajustes de Calidad">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="4" y1="21" x2="4" y2="14"></line>
+                                        <line x1="4" y1="10" x2="4" y2="3"></line>
+                                        <line x1="12" y1="21" x2="12" y2="12"></line>
+                                        <line x1="12" y1="8" x2="12" y2="3"></line>
+                                        <line x1="20" y1="21" x2="20" y2="16"></line>
+                                        <line x1="20" y1="12" x2="20" y2="3"></line>
+                                        <line x1="1" y1="14" x2="7" y2="14"></line>
+                                        <line x1="9" y1="8" x2="15" y2="8"></line>
+                                        <line x1="17" y1="16" x2="23" y2="16"></line>
+                                    </svg>
+                                </button>
+                                <div class="quality-menu" id="quality-menu">
+                                    <div class="quality-option active" data-quality="auto">Auto (1080p)</div>
+                                    <div class="quality-option" data-quality="1080p">1080p HD (60fps)</div>
+                                    <div class="quality-option" data-quality="720p">720p HD</div>
+                                    <div class="quality-option" data-quality="480p">480p</div>
+                                </div>
+                            </div>
+
+                            
+                            <button class="control-btn" id="fullscreen-btn" aria-label="Pantalla completa">
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                                    <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Signal description card -->
+            <div class="signal-details animate-details">
+                <h1 class="signal-title">MundialLibre</h1>
+                <p class="signal-desc">
+                    Transmisión en vivo y en directo de fútbol libre en alta definición. Disfruta de la mejor cobertura del fútbol nacional e internacional sin límites.
+                </p>
+                <div class="signal-specs">
+                    <span class="spec-tag">HD 1080p</span>
+                    <span class="spec-tag">60 FPS</span>
+                    <span class="spec-tag">DRM ClearKey</span>
+                    <span class="spec-tag">Baja Latencia</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="app-footer">
+            <p>&copy; 2026 MundialLibre. Todos los derechos reservados.</p>
+        </footer>
+    </div>
+
+    <!-- Main JavaScript App Code -->
+    <script src="app.js"></script>
+</body>
+</html>
