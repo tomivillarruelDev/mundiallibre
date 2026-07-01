@@ -14,6 +14,9 @@
     <!-- CSS Stylesheet -->
     <link rel="stylesheet" href="style.css">
     
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg" href="favicon.svg">
+    
     <!-- Shaka Player CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
     
@@ -29,29 +32,13 @@
         <!-- TOP LOGO HEADER -->
         <header class="app-header">
             <div class="brand-logo">
-                <svg viewBox="0 0 250 45" class="logo-svg">
-                    <defs>
-                        <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#00f0ff" />
-                            <stop offset="100%" stop-color="#00ff87" />
-                        </linearGradient>
-                    </defs>
-                    <!-- Stylized Football/Globe Icon -->
-                    <g transform="translate(10, 5)">
-                        <circle cx="16" cy="16" r="14" fill="none" stroke="url(#logo-grad)" stroke-width="2.5"/>
-                        <path d="M6 16 C 6 10, 26 10, 26 16 C 26 22, 6 22, 6 16" fill="none" stroke="url(#logo-grad)" stroke-width="1.5"/>
-                        <path d="M16 6 C 10 6, 10 26, 16 26 C 22 26, 22 6, 16 6" fill="none" stroke="url(#logo-grad)" stroke-width="1.5"/>
-                        <line x1="16" y1="2" x2="16" y2="30" stroke="url(#logo-grad)" stroke-width="1.5"/>
-                        <line x1="2" y1="16" x2="30" y2="16" stroke="url(#logo-grad)" stroke-width="1.5"/>
-                    </g>
-                    <text x="50" y="30" font-family="'Outfit', sans-serif" font-weight="800" font-size="24" fill="#ffffff">Mundial</text>
-                    <text x="142" y="30" font-family="'Outfit', sans-serif" font-weight="800" font-size="24" fill="url(#logo-grad)">Libre</text>
-                </svg>
+                <img src="logo.svg" alt="MundialLibre Logo" class="brand-logo-img">
+                <span class="brand-logo-text">Mundial<span class="highlight">Libre</span></span>
             </div>
             
             <div class="signal-badge">
                 <span class="live-dot"></span>
-                <span class="live-text">SEÑAL EN VIVO</span>
+                <span class="live-text">LIVE</span>
             </div>
         </header>
 
@@ -169,8 +156,8 @@
                 <div class="signal-specs">
                     <span class="spec-tag">HD 1080p</span>
                     <span class="spec-tag">60 FPS</span>
-                    <span class="spec-tag">DRM ClearKey</span>
-                    <span class="spec-tag">Baja Latencia</span>
+                    <span class="spec-tag">DRM Protected</span>
+                    <span class="spec-tag">Low Latency</span>
                 </div>
             </div>
         </main>
