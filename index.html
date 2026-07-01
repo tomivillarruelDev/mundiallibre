@@ -6,16 +6,16 @@
     <meta name="description" content="MundialLibre - Transmisión en vivo de fútbol en alta definición.">
     <title>MundialLibre | En Vivo</title>
     
-    <!-- Google Fonts: Outfit (Titulares) e Inter (Lectura) -->
+    <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- CSS Stylesheet -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=6">
     
     <!-- Favicon -->
-    <link rel="icon" type="image/svg" href="favicon.svg">
+    <link rel="icon" type="image/png" href="favicon.png">
     
     <!-- Shaka Player CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
@@ -24,15 +24,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 </head>
 <body>
-    <!-- Stadium Glow Background Lights -->
-    <div class="stadium-glow glow-1"></div>
-    <div class="stadium-glow glow-2"></div>
-    
+    <!-- Centered Web App Container -->
     <div class="app-container">
+        
         <!-- TOP LOGO HEADER -->
         <header class="app-header">
             <div class="brand-logo">
-                <img src="logo.svg" alt="MundialLibre Logo" class="brand-logo-img">
+                <img src="logo.jpg" alt="MundialLibre Logo" class="brand-logo-img">
                 <span class="brand-logo-text">Mundial<span class="highlight">Libre</span></span>
             </div>
             
@@ -42,9 +40,13 @@
             </div>
         </header>
 
-        <!-- MAIN CONTENT: STREAM PLAYER CENTERED -->
+        <!-- MAIN STREAMING CONTENT -->
         <main class="main-content">
-            <div class="player-wrapper animate-player" id="player-container">
+            <div class="player-container-relative">
+                <!-- Stadium Glow Background Light -->
+                <div class="stadium-glow glow-1"></div>
+                
+                <div class="player-wrapper animate-player" id="player-container">
                 <!-- Loading overlay -->
                 <div class="player-loader" id="player-loader">
                     <div class="spinner">
@@ -58,8 +60,6 @@
 
                 <!-- Fallback Iframe (Used when Shaka Player / DRM fails) -->
                 <iframe id="iframe-fallback" style="display: none; width: 100%; height: 100%; border: none;" allow="autoplay; encrypted-media; fullscreen" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
-
-
 
                 <!-- Big Play/Pause Center HUD Overlay -->
                 <div class="center-play-hud" id="center-play-hud">
@@ -92,7 +92,7 @@
                             
                             <button class="control-btn" id="live-sync-btn">
                                 <span class="sync-dot"></span>
-                                <span class="sync-text">DIRECTO</span>
+                                <span class="sync-text">EN VIVO</span>
                             </button>
 
                             <div class="volume-control">
@@ -136,7 +136,6 @@
                                 </div>
                             </div>
 
-                            
                             <button class="control-btn" id="fullscreen-btn" aria-label="Pantalla completa">
                                 <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
                                     <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
@@ -146,18 +145,32 @@
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Signal description card -->
+        <!-- Signal description details -->
             <div class="signal-details animate-details">
-                <h1 class="signal-title">MundialLibre</h1>
+                <h2 class="signal-subtitle">Copa Mundial <span class="dot">•</span> <span class="live">En vivo</span></h2>
+                <h1 class="signal-title">México vs Ecuador</h1>
                 <p class="signal-desc">
-                    Transmisión en vivo y en directo de fútbol libre en alta definición. Disfruta de la mejor cobertura del fútbol nacional e internacional sin límites.
+                    Disfrutá el partido en alta definición y baja latencia.
                 </p>
                 <div class="signal-specs">
-                    <span class="spec-tag">HD 1080p</span>
-                    <span class="spec-tag">60 FPS</span>
-                    <span class="spec-tag">DRM Protected</span>
-                    <span class="spec-tag">Low Latency</span>
+                    <span class="spec-tag">
+                        <svg class="spec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="10" rx="2" ry="2"/><path d="M6 10v4M9 10v4h1a1.5 1.5 0 0 0 1.5-1.5v-1A1.5 1.5 0 0 0 10 10H9z"/></svg>
+                        HD 1080p
+                    </span>
+                    <span class="spec-tag">
+                        <svg class="spec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        60 FPS
+                    </span>
+                    <span class="spec-tag">
+                        <svg class="spec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 11 2 2 4-4"/></svg>
+                        DRM Protegido
+                    </span>
+                    <span class="spec-tag">
+                        <svg class="spec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        Low Latency
+                    </span>
                 </div>
             </div>
         </main>
@@ -166,6 +179,7 @@
         <footer class="app-footer">
             <p>&copy; 2026 MundialLibre. Todos los derechos reservados.</p>
         </footer>
+        
     </div>
 
     <!-- Main JavaScript App Code -->
