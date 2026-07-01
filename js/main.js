@@ -53,9 +53,4 @@ document.addEventListener("DOMContentLoaded", () => {
         elements.loader,
         elements.volumeSlider
     );
-
-    // Preview goal celebration 2.5s after load
-    setTimeout(() => {
-        triggerGoalCelebration();
-    }, 2500);
 });

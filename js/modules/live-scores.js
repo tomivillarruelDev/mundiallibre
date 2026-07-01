@@ -1,5 +1,10 @@
 /* live-scores.js - Dynamic metadata loading and ESPN score API tracker */
 
+import { triggerGoalCelebration } from './animations.js';
+
+let prevHomeScore = null;
+let prevAwayScore = null;
+
 /**
  * Updates the scoreboard match-timer badge with the exact value from the API
  * @param {string|null} timeText Time text from ESPN (e.g. "41'", "Entretiempo") or null to hide
@@ -109,6 +114,19 @@ export async function detectLiveMatch(urlTitle) {
                     if (awayScoreEl) awayScoreEl.textContent = awayScore;
                 }
 
+                // Check if a goal was scored (only after initial load has established a baseline)
+                const currentHomeInt = parseInt(homeScore, 10) || 0;
+                const currentAwayInt = parseInt(awayScore, 10) || 0;
+
+                if (prevHomeScore !== null && prevAwayScore !== null) {
+                    if (currentHomeInt > prevHomeScore || currentAwayInt > prevAwayScore) {
+                        triggerGoalCelebration();
+                    }
+                }
+
+                prevHomeScore = currentHomeInt;
+                prevAwayScore = currentAwayInt;
+
                 // Update the timer badge with the exact API detail
                 updateTimerBadge(matchDetail);
                 return true;
@@ -125,6 +143,10 @@ export async function detectLiveMatch(urlTitle) {
         scoreContainer.style.display = "none";
         titleEl.style.display = "block";
     }
+
+    // Reset baseline scores when no live match is running
+    prevHomeScore = null;
+    prevAwayScore = null;
 
     // Hide the badge if no live match was found
     updateTimerBadge(null);
