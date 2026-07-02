@@ -6,26 +6,27 @@ export let hasFallenBack = false;
 /**
  * Triggers fallback sandboxed iframe when native DASH/DRM playback fails
  */
-export function triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader) {
+export function triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader, instant = false) {
     if (hasFallenBack) return;
     hasFallenBack = true;
 
     console.warn("[PLAYER FALLBACK] Activando señal alternativa por fallo de reproducción DRM.");
-    showErrorText(loader, "Cargando señal de transmisión alternativa...");
 
-    setTimeout(() => {
-        // Hide native player & custom controls
+    const performSwitch = () => {
         video.style.display = "none";
         playerControls.style.display = "none";
         centerPlayHud.style.display = "none";
-
-        // Show sandboxed iframe
         iframeFallback.style.display = "block";
         iframeFallback.src = activeConfig.iframeUrl;
-
-        // Hide loader so user can click iframe controls
         hideLoader(loader);
-    }, 1500);
+    };
+
+    if (instant) {
+        performSwitch();
+    } else {
+        showErrorText(loader, "Conectando con la señal en vivo...");
+        setTimeout(performSwitch, 1500);
+    }
 }
 
 /**
@@ -62,7 +63,7 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
 
     // If configuration decryption failed, fallback immediately
     if (!activeConfig) {
-        triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
+        triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader, true);
         return;
     }
 
@@ -126,6 +127,6 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
         }
     } else {
         console.warn("Shaka Player not supported on this browser.");
-        triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
+        triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader, true);
     }
 }
