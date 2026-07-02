@@ -18,6 +18,10 @@ let cachedAwayShootout = [];
 let lastStatsCache = "";
 let lastAgendaCache = "";
 
+let lastBracketFetchTime = 0;
+let cachedBracketEvents = [];
+let accordionInitialized = false;
+
 /**
  * Updates the scoreboard match-timer badge with the exact value from the API
  * @param {string|null} timeText Time text from ESPN (e.g. "41'", "Entretiempo") or null to hide
@@ -329,6 +333,11 @@ export async function detectLiveMatch(urlTitle) {
 
     // Update the timer badge with the exact API detail
     updateTimerBadge(matchDetail);
+
+    // Hide bracket when live match is active
+    const bracketContainer = document.querySelector(".tournament-bracket-container");
+    if (bracketContainer) bracketContainer.style.display = "none";
+
     return true;
   }
 
@@ -351,6 +360,10 @@ export async function detectLiveMatch(urlTitle) {
 
   // Hide the badge if no live match was found
   updateTimerBadge(null);
+
+  // Load and render tournament bracket
+  loadAndRenderBracket(signal).catch(() => {});
+
   return false;
 }
 
@@ -652,5 +665,313 @@ function updateAgendaUI(prevMatch, nextMatch) {
   }
 
   // If absolutely no matches are scheduled/finished, hide the whole container
-  container.style.display = prevMatch || nextMatch ? "flex" : "none";
+  const shouldShow = prevMatch || nextMatch;
+  const isCurrentlyHidden = container.style.display === "none" || !container.style.display;
+
+  if (shouldShow) {
+    if (isCurrentlyHidden) {
+      container.style.display = "flex";
+      if (typeof gsap !== "undefined" && !container.hasAttribute("data-animated")) {
+        container.setAttribute("data-animated", "true");
+        gsap.from(container, {
+          y: 20,
+          opacity: 0,
+          duration: 0.6,
+          ease: "power2.out"
+        });
+      }
+    }
+  } else {
+    container.style.display = "none";
+  }
+}
+
+const countryTranslations = {
+  "Germany": "Alemania",
+  "Paraguay": "Paraguay",
+  "France": "Francia",
+  "Sweden": "Suecia",
+  "Canada": "Canadá",
+  "South Africa": "Sudáfrica",
+  "Netherlands": "Países Bajos",
+  "Morocco": "Marruecos",
+  "Spain": "España",
+  "Austria": "Austria",
+  "Portugal": "Portugal",
+  "Croatia": "Croacia",
+  "Bosnia-Herzegovina": "Bosnia",
+  "Bosnia": "Bosnia",
+  "United States": "Estados Unidos",
+  "USA": "Estados Unidos",
+  "Senegal": "Senegal",
+  "Belgium": "Bélgica",
+  "Brazil": "Brasil",
+  "Japan": "Japón",
+  "Ivory Coast": "Costa de Marfil",
+  "Norway": "Noruega",
+  "Mexico": "México",
+  "Ecuador": "Ecuador",
+  "Congo DR": "R.D. Congo",
+  "DR Congo": "R.D. Congo",
+  "England": "Inglaterra",
+  "Algeria": "Argelia",
+  "Switzerland": "Suiza",
+  "Argentina": "Argentina",
+  "Cape Verde": "Cabo Verde",
+  "Egypt": "Egipto",
+  "Australia": "Australia",
+  "Ghana": "Ghana",
+  "Colombia": "Colombia"
+};
+
+/**
+ * Format ESPN placeholders or team names to a clean translated format
+ */
+function formatTeamName(name) {
+  if (!name) return "-";
+  
+  // Clean up placeholders
+  if (name.includes("Winner")) {
+    const numMatch = name.match(/\d+/);
+    if (numMatch) {
+      return `Ganador ${numMatch[0]}`;
+    }
+    return name
+      .replace("Round of 32", "16avos")
+      .replace("Round of 16", "Octavos")
+      .replace("Quarterfinal", "Cuartos")
+      .replace("Semifinal", "Semi")
+      .replace("Winner", "Ganador")
+      .replace("at", "vs");
+  }
+
+  if (name.includes("Loser")) {
+    const numMatch = name.match(/\d+/);
+    if (numMatch) {
+      return `Perdedor ${numMatch[0]}`;
+    }
+    return name
+      .replace("Semifinal", "Semi")
+      .replace("Loser", "Perdedor")
+      .replace("at", "vs");
+  }
+
+  const trimmed = name.trim();
+  if (countryTranslations[trimmed]) {
+    return countryTranslations[trimmed];
+  }
+
+  let translated = trimmed;
+  for (const [eng, esp] of Object.entries(countryTranslations)) {
+    const reg = new RegExp(`\\b${eng}\\b`, "gi");
+    translated = translated.replace(reg, esp);
+  }
+
+  return translated;
+}
+
+/**
+ * Render a single match card node inside its slot
+ */
+function renderMatchNode(ev, slot, isFinal = false) {
+  if (!slot) return;
+  slot.innerHTML = "";
+
+  const soccerBallFallback = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-opacity='0.15' stroke-width='1.5'><circle cx='12' cy='12' r='10'/><polygon points='12,10 15.5,12.5 14.2,16.5 9.8,16.5 8.5,12.5' fill='%23ffffff' fill-opacity='0.08'/><line x1='12' y1='10' x2='12' y2='2'/><line x1='15.5' y1='12.5' x2='21.5' y2='9.5'/><line x1='14.2' y1='16.5' x2='18' y2='21.3'/><line x1='9.8' y1='16.5' x2='6' y2='21.3'/><line x1='8.5' y1='12.5' x2='2.5' y2='9.5'/></svg>";
+  const logoFallback = isFinal ? "assets/logo.svg" : soccerBallFallback;
+  let homeName = "-";
+  let awayName = "-";
+  let homeLogo = logoFallback;
+  let awayLogo = logoFallback;
+  let homeScore = "";
+  let awayScore = "";
+  let isHomeWinner = false;
+  let isAwayWinner = false;
+  let isFinished = false;
+  let statusDetail = "Programado";
+
+  if (ev) {
+    const comp = ev.competitions?.[0];
+    const home = comp?.competitors?.find(c => c.homeAway === 'home');
+    const away = comp?.competitors?.find(c => c.homeAway === 'away');
+
+    homeName = formatTeamName(home?.team?.displayName);
+    awayName = formatTeamName(away?.team?.displayName);
+    homeLogo = home?.team?.logo || logoFallback;
+    awayLogo = away?.team?.logo || logoFallback;
+
+    isFinished = comp?.status?.type?.completed === true;
+    const isLive = comp?.status?.type?.state === "in";
+
+    if (isFinished || isLive) {
+      homeScore = home?.score ?? "";
+      awayScore = away?.score ?? "";
+      const homeScoreInt = parseInt(homeScore, 10) || 0;
+      const awayScoreInt = parseInt(awayScore, 10) || 0;
+      if (isFinished) {
+        if (homeScoreInt > awayScoreInt || home?.winner === true) {
+          isHomeWinner = true;
+        } else if (awayScoreInt > homeScoreInt || away?.winner === true) {
+          isAwayWinner = true;
+        }
+      }
+    }
+
+    if (isLive) {
+      statusDetail = comp?.status?.type?.detail || "En Vivo";
+      if (statusDetail === "Halftime") statusDetail = "Entretiempo";
+    } else if (isFinished) {
+      const detail = comp?.status?.type?.detail || "Finalizado";
+      if (detail === "FT" || detail === "Full Time") statusDetail = "Finalizado";
+      else if (detail === "AET" || detail.includes("Extra")) statusDetail = "T. Extra";
+      else if (detail === "Pen." || detail.includes("Pen")) statusDetail = "Penales";
+      else statusDetail = "Finalizado";
+    } else {
+      if (ev.date) {
+        try {
+          const dateObj = new Date(ev.date);
+          const dateStr = dateObj.toLocaleDateString('es-AR', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short'
+          });
+          const timeStr = dateObj.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          }) + ' hs';
+          const capitalizedDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+          statusDetail = `${capitalizedDate} • ${timeStr}`;
+        } catch (e) {
+          statusDetail = "Programado";
+        }
+      } else {
+        statusDetail = "Programado";
+      }
+    }
+  }
+
+  const cardClass = isFinal ? "final-match-card" : "bracket-match-node";
+
+  slot.innerHTML = `
+    <div class="${cardClass}">
+      <div class="bracket-match-team ${isHomeWinner ? 'winner' : ''} ${isFinished && isAwayWinner ? 'loser' : ''}">
+        <div class="bracket-team-info">
+          <img class="bracket-flag" src="${homeLogo}" alt="${homeName}" />
+          <span class="bracket-team-name">${homeName}</span>
+        </div>
+        <span class="bracket-team-score">${homeScore}</span>
+      </div>
+      <div class="bracket-match-team ${isAwayWinner ? 'winner' : ''} ${isFinished && isHomeWinner ? 'loser' : ''}">
+        <div class="bracket-team-info">
+          <img class="bracket-flag" src="${awayLogo}" alt="${awayName}" />
+          <span class="bracket-team-name">${awayName}</span>
+        </div>
+        <span class="bracket-team-score">${awayScore}</span>
+      </div>
+      <div class="bracket-match-meta">${statusDetail}</div>
+    </div>
+  `;
+}
+
+/**
+ * Render all events into the desktop tree view slots
+ */
+function renderBracketTree(events) {
+  const slots = document.querySelectorAll(".bracket-match-slot");
+  slots.forEach(slot => {
+    const matchId = slot.getAttribute("data-match-id");
+    const ev = events.find(e => e.id === matchId);
+    renderMatchNode(ev, slot, false);
+  });
+
+  const finalSlot = document.querySelector(".final-match-slot");
+  if (finalSlot) {
+    const matchId = finalSlot.getAttribute("data-match-id");
+    const ev = events.find(e => e.id === matchId);
+    renderMatchNode(ev, finalSlot, true);
+  }
+}
+
+/**
+ * Set up accordion toggle event listeners on mobile screens
+ */
+function initBracketAccordion() {
+  const container = document.querySelector(".tournament-bracket-container");
+  if (!container) return;
+
+  if (window.innerWidth <= 1024) {
+    container.classList.add("collapsed");
+  }
+
+  const header = container.querySelector(".bracket-section-header");
+  const overlay = container.querySelector(".bracket-expand-overlay");
+
+  const toggleAccordion = () => {
+    if (window.innerWidth > 1024) return;
+    
+    if (container.classList.contains("collapsed")) {
+      container.classList.remove("collapsed");
+    } else {
+      container.classList.add("collapsed");
+      if (header) {
+        header.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  };
+
+  if (header) {
+    header.style.cursor = "pointer";
+    header.addEventListener("click", toggleAccordion);
+  }
+  if (overlay) {
+    overlay.addEventListener("click", toggleAccordion);
+  }
+}
+
+/**
+ * Load events from ESPN for the date range of knockout phase and render the bracket
+ */
+async function loadAndRenderBracket(signal) {
+  const container = document.querySelector(".tournament-bracket-container");
+  if (!container) return;
+
+  const isCurrentlyHidden = container.style.display === "none" || !container.style.display;
+  if (isCurrentlyHidden) {
+    container.style.display = "flex";
+    if (typeof gsap !== "undefined" && !container.hasAttribute("data-animated")) {
+      container.setAttribute("data-animated", "true");
+      gsap.from(container, {
+        y: 20,
+        opacity: 0,
+        duration: 0.6,
+        ease: "power2.out"
+      });
+    }
+  }
+
+  if (!accordionInitialized) {
+    initBracketAccordion();
+    accordionInitialized = true;
+  }
+
+  const now = Date.now();
+  if (now - lastBracketFetchTime > 300000 || cachedBracketEvents.length === 0) {
+    try {
+      const res = await fetch(
+        "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates=20260627-20260719",
+        { signal }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        cachedBracketEvents = data.events || [];
+        lastBracketFetchTime = now;
+      }
+    } catch (e) {
+      if (e.name === "AbortError") throw e;
+      console.warn("Failed to fetch bracket data from ESPN:", e);
+    }
+  }
+
+  renderBracketTree(cachedBracketEvents);
 }

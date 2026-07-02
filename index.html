@@ -62,7 +62,7 @@
       rel="stylesheet" />
 
     <!-- CSS Stylesheet -->
-    <link rel="stylesheet" href="css/style.css?v=71" />
+    <link rel="stylesheet" href="css/style.css?v=85" />
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg" href="assets/favicon.svg" />
@@ -421,6 +421,106 @@
                   <img class="agenda-logo next-away-logo" src="assets/logo.svg" alt="Escudo visitante próximo" />
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- Tournament Bracket Section -->
+          <div class="tournament-bracket-container" style="display: none;">
+            <div class="bracket-section-header">
+              <span class="bracket-section-title">CUADRO DE FASE FINAL</span>
+            </div>
+            
+            <!-- Bracket Tree View -->
+            <div class="bracket-tree-view">
+              <!-- Left Side -->
+              <div class="bracket-half bracket-left">
+                <div class="bracket-round round-32">
+                  <div class="round-title">16avos</div>
+                  <div class="round-matches-list" id="left-r32">
+                    <div class="bracket-match-slot" data-match-id="760489"></div>
+                    <div class="bracket-match-slot" data-match-id="760492"></div>
+                    <div class="bracket-match-slot" data-match-id="760486"></div>
+                    <div class="bracket-match-slot" data-match-id="760488"></div>
+                    <div class="bracket-match-slot" data-match-id="760497"></div>
+                    <div class="bracket-match-slot" data-match-id="760496"></div>
+                    <div class="bracket-match-slot" data-match-id="760494"></div>
+                    <div class="bracket-match-slot" data-match-id="760493"></div>
+                  </div>
+                </div>
+                <div class="bracket-round round-16">
+                  <div class="round-title">Octavos</div>
+                  <div class="round-matches-list" id="left-r16">
+                    <div class="bracket-match-slot" data-match-id="760503"></div>
+                    <div class="bracket-match-slot" data-match-id="760502"></div>
+                    <div class="bracket-match-slot" data-match-id="760506"></div>
+                    <div class="bracket-match-slot" data-match-id="760507"></div>
+                  </div>
+                </div>
+                <div class="bracket-round round-8">
+                  <div class="round-title">Cuartos</div>
+                  <div class="round-matches-list" id="left-r8">
+                    <div class="bracket-match-slot" data-match-id="760510"></div>
+                    <div class="bracket-match-slot" data-match-id="760511"></div>
+                  </div>
+                </div>
+                <div class="bracket-round round-4">
+                  <div class="round-title">Semifinal</div>
+                  <div class="round-matches-list" id="left-r4">
+                    <div class="bracket-match-slot" data-match-id="760514"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Center Final -->
+              <div class="bracket-center">
+                <div class="round-title">Gran Final</div>
+                <div class="final-match-slot" data-match-id="760517"></div>
+              </div>
+              
+              <!-- Right Side -->
+              <div class="bracket-half bracket-right">
+                <div class="bracket-round round-4">
+                  <div class="round-title">Semifinal</div>
+                  <div class="round-matches-list" id="right-r4">
+                    <div class="bracket-match-slot" data-match-id="760515"></div>
+                  </div>
+                </div>
+                <div class="bracket-round round-8">
+                  <div class="round-title">Cuartos</div>
+                  <div class="round-matches-list" id="right-r8">
+                    <div class="bracket-match-slot" data-match-id="760512"></div>
+                    <div class="bracket-match-slot" data-match-id="760513"></div>
+                  </div>
+                </div>
+                <div class="bracket-round round-16">
+                  <div class="round-title">Octavos</div>
+                  <div class="round-matches-list" id="right-r16">
+                    <div class="bracket-match-slot" data-match-id="760504"></div>
+                    <div class="bracket-match-slot" data-match-id="760505"></div>
+                    <div class="bracket-match-slot" data-match-id="760508"></div>
+                    <div class="bracket-match-slot" data-match-id="760509"></div>
+                  </div>
+                </div>
+                <div class="bracket-round round-32">
+                  <div class="round-title">16avos</div>
+                  <div class="round-matches-list" id="right-r32">
+                    <div class="bracket-match-slot" data-match-id="760487"></div>
+                    <div class="bracket-match-slot" data-match-id="760490"></div>
+                    <div class="bracket-match-slot" data-match-id="760491"></div>
+                    <div class="bracket-match-slot" data-match-id="760495"></div>
+                    <div class="bracket-match-slot" data-match-id="760498"></div>
+                    <div class="bracket-match-slot" data-match-id="760500"></div>
+                    <div class="bracket-match-slot" data-match-id="760499"></div>
+                    <div class="bracket-match-slot" data-match-id="760501"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Expand Overlay (Mobile only) -->
+            <div class="bracket-expand-overlay">
+              <span class="expand-text">Tocar para desplegar cuadro completo</span>
+              <svg class="expand-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
           </div>
 
