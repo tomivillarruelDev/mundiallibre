@@ -178,9 +178,10 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
         triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
     });
 
-    // Listen for video tag errors
+    // Listen for video tag errors — skip MEDIA_ERR_ABORTED (code 1) which fires on rapid
+    // play/pause cycles and is not a real failure (the stream is still healthy).
     video.addEventListener('error', () => {
-        if (video.error) {
+        if (video.error && video.error.code !== MediaError.MEDIA_ERR_ABORTED) {
             console.error("Video element error code:", video.error.code, "message:", video.error.message);
             triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
         }

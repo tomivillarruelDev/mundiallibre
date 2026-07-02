@@ -52,9 +52,12 @@ export function setupUIControls(elements) {
   let playbackUiFrame = null;
   const liveSyncText = liveSyncBtn.querySelector(".sync-text");
 
-  // Play/Pause Action
+  // Play/Pause Action — debounced to prevent rapid taps on iOS from corrupting state
+  let playToggleLocked = false;
   const togglePlay = () => {
-    if (hasFallenBack) return; // Ignore custom controls in iframe fallback
+    if (hasFallenBack || playToggleLocked) return;
+    playToggleLocked = true;
+    setTimeout(() => { playToggleLocked = false; }, 300);
 
     if (video.paused) {
       video.play().catch(console.error);
@@ -231,21 +234,27 @@ export function setupUIControls(elements) {
   });
 
   // Fullscreen toggle
+  // iOS Safari doesn't support requestFullscreen() on arbitrary elements.
+  // Use video.webkitEnterFullscreen() which triggers the native iOS player fullscreen.
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
   const toggleFullscreen = () => {
+    if (isIOS) {
+      if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+      return;
+    }
     if (!document.fullscreenElement) {
-      if (playerContainer.requestFullscreen) {
-        playerContainer.requestFullscreen();
-      } else if (playerContainer.mozRequestFullScreen) {
-        playerContainer.mozRequestFullScreen();
-      } else if (playerContainer.webkitRequestFullscreen) {
-        playerContainer.webkitRequestFullscreen();
-      } else if (playerContainer.msRequestFullscreen) {
-        playerContainer.msRequestFullscreen();
-      }
+      const req = playerContainer.requestFullscreen
+        || playerContainer.mozRequestFullScreen
+        || playerContainer.webkitRequestFullscreen
+        || playerContainer.msRequestFullscreen;
+      if (req) req.call(playerContainer);
     } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      }
+      const exit = document.exitFullscreen
+        || document.mozCancelFullScreen
+        || document.webkitExitFullscreen;
+      if (exit) exit.call(document);
     }
   };
 
