@@ -6,12 +6,15 @@ let prevHomeScore = null;
 let prevAwayScore = null;
 let activeLookupPromise = null;
 let lookupTimer = null;
+let activeAbortController = null;
 
 // Throttling & DOM Caches
 let lastSummaryFetchTime = 0;
 let lastCachedMatchId = null;
 let cachedHomeEvents = [];
 let cachedAwayEvents = [];
+let cachedHomeShootout = [];
+let cachedAwayShootout = [];
 let lastStatsCache = "";
 let lastAgendaCache = "";
 
@@ -72,6 +75,13 @@ export async function detectLiveMatch(urlTitle) {
   // If the user specified a match in the URL parameters, do not overwrite it
   if (urlTitle) return true;
 
+  // Abort any previous pending fetch
+  if (activeAbortController) {
+    activeAbortController.abort();
+  }
+  activeAbortController = new AbortController();
+  const signal = activeAbortController.signal;
+
   const leagues = [
     "fifa.world",
     "conmebol.america",
@@ -100,12 +110,18 @@ export async function detectLiveMatch(urlTitle) {
   let activeLeague = null;
   let activeLeagueName = null;
 
+  let successCount = 0;
   for (const league of leagues) {
     try {
       const res = await fetch(
         `https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard?lang=es&region=ar&${datesParam}`,
+        { signal }
       );
-      if (!res.ok) continue;
+      if (res.ok) {
+        successCount++;
+      } else {
+        continue;
+      }
       const data = await res.json();
       const events = data.events || [];
 
@@ -139,9 +155,16 @@ export async function detectLiveMatch(urlTitle) {
         }
       });
     } catch (e) {
+      if (e.name === "AbortError") throw e;
       console.warn(`ESPN API fetch failed for ${league}:`, e);
     }
   }
+
+  if (successCount === 0) {
+    throw new Error("All leagues fetch failed (network offline)");
+  }
+
+
 
   // Filter out active live event from upcoming list
   if (activeLiveEvent) {
@@ -226,6 +249,8 @@ export async function detectLiveMatch(urlTitle) {
       lastSummaryFetchTime = 0;
       cachedHomeEvents = [];
       cachedAwayEvents = [];
+      cachedHomeShootout = [];
+      cachedAwayShootout = [];
     }
 
     const nowTime = Date.now();
@@ -236,6 +261,7 @@ export async function detectLiveMatch(urlTitle) {
       try {
         const summaryRes = await fetch(
           `https://site.api.espn.com/apis/site/v2/sports/soccer/${activeLeague}/summary?event=${activeLiveEvent.id}&lang=es&region=ar`,
+          { signal }
         );
         if (summaryRes.ok) {
           const summaryData = await summaryRes.json();
@@ -243,10 +269,22 @@ export async function detectLiveMatch(urlTitle) {
           
           let fetchedHome = [];
           let fetchedAway = [];
+          let homeShootout = [];
+          let awayShootout = [];
 
           keyEvents.forEach((ev) => {
             const type = ev.type?.type || "";
-            if (type.includes("goal") || type.includes("card")) {
+            const isShootout = ev.shootout === true;
+
+            if (isShootout) {
+              const isHome = ev.team?.id === homeId;
+              const scored =
+                type.includes("goal") ||
+                ev.text?.toLowerCase().includes("gol") ||
+                ev.text?.toLowerCase().includes("convierte");
+              if (isHome) homeShootout.push(scored);
+              else awayShootout.push(scored);
+            } else if (type.includes("goal") || type.includes("card")) {
               const isHome = ev.team?.id === homeId;
               const item = {
                 type: type.includes("goal")
@@ -267,14 +305,17 @@ export async function detectLiveMatch(urlTitle) {
 
           cachedHomeEvents = fetchedHome;
           cachedAwayEvents = fetchedAway;
+          cachedHomeShootout = homeShootout;
+          cachedAwayShootout = awayShootout;
           lastSummaryFetchTime = nowTime;
         }
       } catch (err) {
+        if (err.name === "AbortError") throw err;
         console.warn("Failed to fetch detailed match summary:", err);
       }
     }
 
-    // Render stats UI using cached or newly fetched events
+    // Render stats UI using cached or newly fetched events & shootouts
     updateStatsUI(
       cachedHomeEvents,
       cachedAwayEvents,
@@ -282,6 +323,8 @@ export async function detectLiveMatch(urlTitle) {
       awayLogo,
       homeTeam,
       awayTeam,
+      cachedHomeShootout,
+      cachedAwayShootout,
     );
 
     // Update the timer badge with the exact API detail
@@ -299,6 +342,8 @@ export async function detectLiveMatch(urlTitle) {
 
   const statsContainer = document.querySelector(".match-stats-container");
   if (statsContainer) statsContainer.style.display = "none";
+  const divider = document.querySelector(".match-section-divider");
+  if (divider) divider.style.display = "none";
 
   // Reset baseline scores when no live match is running
   prevHomeScore = null;
@@ -343,11 +388,18 @@ export function loadMatchMetadata(activeConfig) {
 
   updateMetadata(initialTitle, initialSubtitle, initialDesc);
 
+  let currentPollInterval = 10000;
+  let failureCount = 0;
+
   const performLookup = () => {
     if (activeLookupPromise) return;
 
     activeLookupPromise = detectLiveMatch(urlTitle)
       .then((liveFound) => {
+        // Success: reset backoff
+        failureCount = 0;
+        currentPollInterval = 10000;
+
         if (!liveFound) {
           // Option D: Local match.json file override fallback
           fetch("match.json")
@@ -367,10 +419,16 @@ export function loadMatchMetadata(activeConfig) {
             });
         }
       })
+      .catch((err) => {
+        if (err.name === "AbortError") return;
+        failureCount++;
+        currentPollInterval = Math.min(10000 * Math.pow(2, failureCount), 60000);
+        console.warn(`ESPN lookup failed. Retrying in ${currentPollInterval / 1000}s. Error:`, err);
+      })
       .finally(() => {
         activeLookupPromise = null;
         if (document.visibilityState === "visible") {
-          lookupTimer = window.setTimeout(performLookup, 10000);
+          lookupTimer = window.setTimeout(performLookup, currentPollInterval);
         }
       });
   };
@@ -397,11 +455,16 @@ function updateStatsUI(
   awayLogo,
   homeTeam,
   awayTeam,
+  homeShootout = [],
+  awayShootout = [],
 ) {
   const statsContainer = document.querySelector(".match-stats-container");
   if (!statsContainer) return;
 
-  const statsKey = JSON.stringify({ homeEvents, awayEvents, homeLogo, awayLogo, homeTeam, awayTeam });
+  const homeKeys = homeEvents.map(e => `${e.type}:${e.time}:${e.player}`).join(';');
+  const awayKeys = awayEvents.map(e => `${e.type}:${e.time}:${e.player}`).join(';');
+  const statsKey = `${homeKeys}|${awayKeys}|${homeLogo}|${awayLogo}|${homeTeam}|${awayTeam}|${homeShootout.join(',')}|${awayShootout.join(',')}`;
+  
   if (statsKey === lastStatsCache) return;
   lastStatsCache = statsKey;
 
@@ -472,7 +535,42 @@ function updateStatsUI(
   renderList(homeEvents, homeListEl);
   renderList(awayEvents, awayListEl);
 
+  // Shootout rendering
+  const renderShootout = (shootout, statsCol) => {
+    const existingRow = statsCol.querySelector(".stats-shootout-row");
+    if (existingRow) existingRow.remove();
+
+    if (!shootout || shootout.length === 0) return;
+
+    const row = document.createElement("div");
+    row.className = "stats-shootout-row";
+
+    const title = document.createElement("span");
+    title.className = "stats-shootout-title";
+    title.textContent = "Penales:";
+    row.appendChild(title);
+
+    const dotsContainer = document.createElement("div");
+    dotsContainer.className = "stats-shootout-dots";
+
+    shootout.forEach((scored) => {
+      const dot = document.createElement("span");
+      dot.className = `shootout-dot ${scored ? "score" : "miss"}`;
+      dotsContainer.appendChild(dot);
+    });
+
+    row.appendChild(dotsContainer);
+    statsCol.appendChild(row);
+  };
+
+  const homeCol = statsContainer.querySelector(".home-stats");
+  const awayCol = statsContainer.querySelector(".away-stats");
+  if (homeCol) renderShootout(homeShootout, homeCol);
+  if (awayCol) renderShootout(awayShootout, awayCol);
+
   statsContainer.style.display = "flex";
+  const divider = document.querySelector(".match-section-divider");
+  if (divider) divider.style.display = "block";
 }
 
 /**
@@ -482,12 +580,8 @@ function updateAgendaUI(prevMatch, nextMatch) {
   const container = document.querySelector(".matches-agenda-container");
   if (!container) return;
 
-  const agendaKey = JSON.stringify({
-    prevId: prevMatch?.id,
-    prevScore: prevMatch?.competitions?.[0]?.competitors?.map((c) => c.score).join(","),
-    nextId: nextMatch?.id,
-    nextDate: nextMatch?.date,
-  });
+  const prevScore = prevMatch?.competitions?.[0]?.competitors?.map((c) => c.score).join(",") || "";
+  const agendaKey = `${prevMatch?.id || ""}:${prevScore}|${nextMatch?.id || ""}:${nextMatch?.date || ""}`;
   if (agendaKey === lastAgendaCache) return;
   lastAgendaCache = agendaKey;
 
