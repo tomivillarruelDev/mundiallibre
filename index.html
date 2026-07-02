@@ -62,7 +62,7 @@
       rel="stylesheet" />
 
     <!-- CSS Stylesheet -->
-    <link rel="stylesheet" href="css/style.css?v=48" />
+    <link rel="stylesheet" href="css/style.css?v=53" />
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg" href="assets/favicon.svg" />
@@ -262,7 +262,13 @@
 
         <!-- Signal description details -->
         <div class="signal-details animate-details">
-     
+          <h2 class="signal-subtitle" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px;">
+            <img src="assets/mundiallibre.svg" alt="Mundial Libre" style="height: 32px; width: auto; object-fit: contain; display: block;" />
+            <span style="opacity: 0.3; font-weight: 300;">|</span>
+            <span class="subtitle-text">Transmisión Oficial</span>
+            <span class="dot">•</span>
+            <span class="live">En vivo</span>
+          </h2>
           <h1 class="signal-title">Señal en Vivo</h1>
 
           <div class="live-scoreboard-container" style="display: none">
@@ -282,9 +288,35 @@
             <span class="match-timer-badge" style="display: none"></span>
           </div>
           <p class="signal-desc">
-            Disfrutá de la transmisión en alta definición y baja latencia. Los
-            partidos y eventos en vivo se actualizarán automáticamente.
+            Disfrutá de la transmisión en alta definición y baja latencia. Los partidos y eventos en vivo se actualizarán automáticamente.
           </p>
+          <!-- Match Events (Goals & Cards) Section -->
+          <div class="match-stats-container" style="display: none;">
+            <!-- Column 1: Home Events -->
+            <div class="stats-column home-stats">
+              <div class="stats-column-header">
+                <img class="stats-team-logo home-stats-logo" src="assets/logo.svg" alt="Local Logo" />
+                <span class="stats-team-name home-stats-name">Local</span>
+              </div>
+              <div class="stats-list home-stats-list">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+            
+            <div class="stats-divider"></div>
+            
+            <!-- Column 2: Away Events -->
+            <div class="stats-column away-stats">
+              <div class="stats-column-header">
+                <span class="stats-team-name away-stats-name">Visitante</span>
+                <img class="stats-team-logo away-stats-logo" src="assets/logo.svg" alt="Visitante Logo" />
+              </div>
+              <div class="stats-list away-stats-list">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+          </div>
+
           <div class="signal-specs">
             <span class="spec-tag">
               <svg

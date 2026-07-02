@@ -593,6 +593,8 @@ body {
     gap: 16px; /* Espaciado entre elementos: 12px - 28px */
 }
 
+
+
 .signal-subtitle {
     font-family: var(--font-display);
     font-size: 18px; /* H2: 18px */
@@ -793,6 +795,78 @@ body {
     }
 }
 
+@media (max-width: 600px) {
+    /* Scoreboard Widget Mobile optimization */
+    .live-scoreboard-container {
+        width: 100%;
+        justify-content: space-between;
+        padding: 12px;
+        gap: 8px;
+    }
+    
+    .scoreboard-team {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 6px;
+        width: 35%;
+    }
+    
+    .team-name {
+        font-size: 13px !important;
+        font-weight: 700;
+        line-height: 1.2;
+        word-break: break-word;
+    }
+    
+    .team-logo {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .scoreboard-score {
+        padding: 4px 12px;
+        gap: 6px;
+    }
+    
+    .score-num {
+        font-size: 24px;
+    }
+    
+    .score-divider {
+        font-size: 20px;
+    }
+    
+    .live-scoreboard-container .match-timer-badge {
+        margin-left: 0;
+        margin-top: 4px;
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+    
+    /* Match Events / Stats Section Mobile optimization */
+    .match-stats-container {
+        flex-direction: column;
+        gap: 16px;
+        padding: 16px;
+    }
+    
+    .stats-divider {
+        width: 100%;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.06);
+    }
+    
+    .away-stats .stats-item {
+        justify-content: flex-start;
+        flex-direction: row;
+    }
+    
+    .away-stats .stats-column-header {
+        flex-direction: row;
+    }
+}
+
 /* Animations */
 @keyframes spin {
     to { transform: rotate(360deg); }
@@ -858,4 +932,102 @@ body {
     transform-origin: center;
     display: inline-block;
     user-select: none;
+}
+
+/* ==========================================
+   MATCH EVENTS / STATS SECTION (Goles & Tarjetas)
+   ========================================== */
+.match-stats-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 32px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 16px;
+    margin-bottom: 24px;
+    box-shadow: 0px 8px 32px rgba(0, 0, 0, 0.15);
+    animation: fadeIn 0.4s ease;
+}
+
+.stats-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.stats-column-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: 8px;
+}
+
+.stats-team-logo {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
+.stats-team-name {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.stats-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.home-stats .stats-item {
+    justify-content: flex-start;
+}
+
+.away-stats .stats-item {
+    justify-content: flex-end;
+    flex-direction: row-reverse; /* Right aligned items */
+}
+
+.stats-item-time {
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--color-accent-yellow);
+    background: rgba(255, 230, 0, 0.15);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+}
+
+.stats-item-player {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.stats-divider {
+    width: 1px;
+    background: rgba(255, 255, 255, 0.06);
+    align-self: stretch;
+}
+
+.stats-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }

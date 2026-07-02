@@ -38,17 +38,9 @@ export function updateMetadata(title, subtitle, description) {
         document.title = `${title} | Mundial Libre`;
     }
     if (subtitle) {
-        const subtitleEl = document.querySelector(".signal-subtitle");
-        if (subtitleEl) {
-            if (subtitle === "Mundial Libre") {
-                subtitleEl.innerHTML = `<img src="assets/mundiallibre.svg" alt="Mundial Libre" style="height: 45px; width: auto; object-fit: contain; display: block;"> <span class="dot">•</span> <span class="live">En vivo</span>`;
-                subtitleEl.style.display = "flex";
-                subtitleEl.style.alignItems = "center";
-                subtitleEl.style.gap = "8px";
-            } else {
-                subtitleEl.innerHTML = `${subtitle} <span class="dot">•</span> <span class="live">En vivo</span>`;
-                subtitleEl.style.display = "block";
-            }
+        const textEl = document.querySelector(".signal-subtitle .subtitle-text");
+        if (textEl) {
+            textEl.textContent = subtitle;
         }
     }
     if (description) {
@@ -148,6 +140,40 @@ export async function detectLiveMatch(urlTitle) {
                 prevHomeScore = currentHomeInt;
                 prevAwayScore = currentAwayInt;
 
+                // Fetch detailed match summary for goals and cards
+                const homeId = homeCompetitor?.id;
+                const awayId = awayCompetitor?.id;
+                
+                let homeEvents = [];
+                let awayEvents = [];
+                
+                try {
+                    const summaryRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/summary?event=${liveEvent.id}&lang=es&region=ar`);
+                    if (summaryRes.ok) {
+                        const summaryData = await summaryRes.json();
+                        const keyEvents = summaryData.keyEvents || [];
+                        keyEvents.forEach(ev => {
+                            const type = ev.type?.type || '';
+                            if (type.includes('goal') || type.includes('card')) {
+                                const isHome = ev.team?.id === homeId;
+                                const item = {
+                                    type: type.includes('goal') ? 'goal' : (type.includes('red') ? 'red-card' : 'yellow-card'),
+                                    time: ev.clock?.displayValue || "0'",
+                                    player: ev.participants?.[0]?.athlete?.displayName || ev.shortText?.split(' Gol')[0] || 'Jugador'
+                                };
+                                if (isHome) homeEvents.push(item);
+                                else awayEvents.push(item);
+                            }
+                        });
+                    }
+                } catch (err) {
+                    console.warn("Failed to fetch detailed match summary:", err);
+                }
+                
+
+                // Render stats UI
+                updateStatsUI(homeEvents, awayEvents, homeLogo, awayLogo, homeTeam, awayTeam);
+
                 // Update the timer badge with the exact API detail
                 updateTimerBadge(matchDetail);
                 return true;
@@ -165,6 +191,9 @@ export async function detectLiveMatch(urlTitle) {
         titleEl.style.display = "block";
     }
 
+    const statsContainer = document.querySelector(".match-stats-container");
+    if (statsContainer) statsContainer.style.display = "none";
+
     // Reset baseline scores when no live match is running
     prevHomeScore = null;
     prevAwayScore = null;
@@ -181,7 +210,7 @@ export async function detectLiveMatch(urlTitle) {
 export function loadMatchMetadata(activeConfig) {
     // Default Fallbacks
     let defaultTitle = "Señal en Vivo";
-    let defaultSubtitle = "Mundial Libre";
+    let defaultSubtitle = "Transmisión Oficial";
     let defaultDesc = "Disfrutá de la transmisión en alta definición y baja latencia. Los partidos y eventos en vivo se actualizarán automáticamente.";
 
     // Option A: Decrypted config parameters
@@ -230,4 +259,81 @@ export function loadMatchMetadata(activeConfig) {
 
     // Query ESPN scoreboard every 15 seconds for live updates (scores, minute timer sync)
     setInterval(performLookup, 15000);
+}
+
+/**
+ * Renders the goal and card stats inside the .match-stats-container
+ */
+function updateStatsUI(homeEvents, awayEvents, homeLogo, awayLogo, homeTeam, awayTeam) {
+    const statsContainer = document.querySelector(".match-stats-container");
+    if (!statsContainer) return;
+    
+    // Update team logos and names in headers
+    const homeLogoEl = statsContainer.querySelector(".home-stats-logo");
+    const awayLogoEl = statsContainer.querySelector(".away-stats-logo");
+    if (homeLogoEl) homeLogoEl.src = homeLogo;
+    if (awayLogoEl) awayLogoEl.src = awayLogo;
+    
+    const homeNameEl = statsContainer.querySelector(".home-stats-name");
+    const awayNameEl = statsContainer.querySelector(".away-stats-name");
+    if (homeNameEl) homeNameEl.textContent = homeTeam;
+    if (awayNameEl) awayNameEl.textContent = awayTeam;
+    
+    // SVGs
+    const soccerBallSvg = `
+      <span class="stats-icon-wrapper">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-primary);">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="m12 2-1.5 4.5L7 8l1.5 4.5h7L17 8l-1.5-4.5L12 2Z"/>
+          <path d="M10.5 6.5 7.5 5M7 8l-3.5-.5M8.5 12.5 6 15M15.5 12.5 18 15M17 8l3.5-.5M13.5 6.5 16.5 5"/>
+        </svg>
+      </span>`;
+      
+    const yellowCardSvg = `
+      <span class="stats-icon-wrapper">
+        <svg viewBox="0 0 24 24" width="12" height="16" fill="#FFE600" style="filter: drop-shadow(0 0 4px rgba(255,230,0,0.4));">
+          <rect x="5" y="3" width="14" height="18" rx="2" ry="2"/>
+        </svg>
+      </span>`;
+      
+    const redCardSvg = `
+      <span class="stats-icon-wrapper">
+        <svg viewBox="0 0 24 24" width="12" height="16" fill="#FF3B30" style="filter: drop-shadow(0 0 4px rgba(255,59,48,0.4));">
+          <rect x="5" y="3" width="14" height="18" rx="2" ry="2"/>
+        </svg>
+      </span>`;
+      
+    const renderList = (events, listEl) => {
+        if (!listEl) return;
+        listEl.innerHTML = "";
+        
+        if (events.length === 0) {
+            listEl.innerHTML = `<div style="font-size: 13px; color: var(--text-secondary); font-style: italic; padding: 4px 0;">Sin goles ni tarjetas</div>`;
+            return;
+        }
+        
+        events.forEach(ev => {
+            let svg = "";
+            if (ev.type === "goal") svg = soccerBallSvg;
+            else if (ev.type === "red-card") svg = redCardSvg;
+            else svg = yellowCardSvg;
+            
+            const item = document.createElement("div");
+            item.className = "stats-item";
+            item.innerHTML = `
+                <span class="stats-item-time">${ev.time}</span>
+                ${svg}
+                <span class="stats-item-player">${ev.player}</span>
+            `;
+            listEl.appendChild(item);
+        });
+    };
+    
+    const homeListEl = statsContainer.querySelector(".home-stats-list");
+    const awayListEl = statsContainer.querySelector(".away-stats-list");
+    
+    renderList(homeEvents, homeListEl);
+    renderList(awayEvents, awayListEl);
+    
+    statsContainer.style.display = "flex";
 }
