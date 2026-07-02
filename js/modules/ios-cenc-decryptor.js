@@ -17,6 +17,10 @@
  *   length:64 → rightmost 64 bits are the counter. Matches CENC spec exactly.
  */
 
+// ── Debug logger (writes to on-screen iOS panel when active) ─────────────────
+
+const _log = (m) => { try { if (window.__iosLog) window.__iosLog(m); } catch (_) {} };
+
 // ── MP4 box primitives ────────────────────────────────────────────────────────
 
 function r32(b, o) {
@@ -88,12 +92,14 @@ export function transformInitSegment(data) {
         walk(bytes, stsd.pos + 16, stsd.pos + stsd.size, (b2, ep, es, et) => {
             if (et === 'encv') {
                 setType4(b2, ep, 'avc1');
-                // encv visual fields: 6 reserved + 2 data-ref-idx + 28 visual = 36 bytes after header
-                patchSinf(b2, ep + 8 + 36, ep + es);
+                // encv: box-hdr(8) + SampleEntry(6+2=8) + VisualSampleEntry(70) = 86 bytes before inner boxes
+                patchSinf(b2, ep + 86, ep + es);
+                _log('init: encv→avc1, sinf patched at ep+86');
             } else if (et === 'enca') {
                 setType4(b2, ep, 'mp4a');
-                // enca audio fields: 6 reserved + 2 data-ref-idx + 8+2+2+2+2+4 = 28 bytes after header
-                patchSinf(b2, ep + 8 + 28, ep + es);
+                // enca: box-hdr(8) + SampleEntry(8) + AudioSampleEntry(8+2+2+2+2+4=20) = 36 bytes before inner boxes
+                patchSinf(b2, ep + 36, ep + es);
+                _log('init: enca→mp4a, sinf patched at ep+36');
             }
         });
     });
@@ -108,8 +114,6 @@ function patchSinf(b, start, end) {
 }
 
 // ── Media segment decryption ──────────────────────────────────────────────────
-
-const _log = (m) => { try { if (window.__iosLog) window.__iosLog(m); } catch (_) {} };
 
 /**
  * Decrypts all encrypted samples in an fMP4 media segment.
@@ -130,18 +134,21 @@ export async function decryptMediaSegment(data, cryptoKey) {
     const trafBox = findBox(src, moofBox.pos + 8, moofBox.pos + moofBox.size, ['traf']);
     if (!trafBox) { _log('No traf in moof!'); return src.buffer; }
 
-    let sencBox = null, trunBox = null;
+    let tfhdBox = null, sencBox = null, trunBox = null;
     walk(src, trafBox.pos + 8, trafBox.pos + trafBox.size, (b, pos, size, t) => {
-        if (t === 'senc') sencBox = { pos, size };
+        if (t === 'tfhd') tfhdBox = { pos, size };
+        else if (t === 'senc') sencBox = { pos, size };
         else if (t === 'trun') trunBox = { pos, size };
     });
     if (!sencBox) { _log('No senc in traf!'); return src.buffer; }
 
     const samples = parseSENC(src, sencBox);
     const trunSizes = trunBox ? parseTRUN(src, trunBox) : [];
+    const tfhdDefaultSize = tfhdBox ? parseTFHD(src, tfhdBox) : 0;
     const firstIV = samples[0] ? [...samples[0].iv].map(b => b.toString(16).padStart(2, '0')).join('') : 'none';
     const hasSub = !!(samples[0]?.subsamples?.length);
-    _log(`senc: ${samples.length} samples | IV0=${firstIV} | subsamples=${hasSub} | trunSizes=${trunSizes.length}`);
+    const firstSize = trunSizes[0] ?? 0;
+    _log(`senc: ${samples.length}s | IV0=${firstIV} | sub=${hasSub} | trun[0]=${firstSize} | tfhdSz=${tfhdDefaultSize}`);
 
     const mdatStart = mdatBox.pos + 8;
     let mdatOffset = 0;
@@ -184,7 +191,8 @@ export async function decryptMediaSegment(data, cryptoKey) {
         } else {
             // Full-sample encryption (typical for AAC audio):
             // the entire sample payload is one AES-CTR stream starting at block 0.
-            const sampleSize = trunSizes[si] ?? 0;
+            // Use trun per-sample size; fall back to tfhd default_sample_size.
+            const sampleSize = trunSizes[si] || tfhdDefaultSize;
             if (sampleSize > 0) {
                 const counter = buildCTRCounter(iv, BigInt(0));
                 const slice = src.slice(mdatStart + mdatOffset, mdatStart + mdatOffset + sampleSize);
@@ -199,7 +207,7 @@ export async function decryptMediaSegment(data, cryptoKey) {
                 }
                 mdatOffset += sampleSize;
             } else if (si === 0) {
-                _log('WARN: trun sample size=0 for full-sample (audio?) si=0');
+                _log('WARN: sampleSize=0 for full-sample si=0 (no trun sizes + no tfhd default)');
             }
         }
     }
@@ -219,11 +227,23 @@ export async function decryptMediaSegment(data, cryptoKey) {
  */
 function buildCTRCounter(iv, blockCount) {
     const counter = new Uint8Array(16);
-    counter.set(iv.slice(0, 8), 0);
-    let bc = blockCount;
-    for (let i = 15; i >= 8; i--) {
-        counter[i] = Number(bc & BigInt(0xFF));
-        bc >>= BigInt(8);
+    if (iv.length === 16) {
+        // 16-byte IV: copy full IV, then add blockCount to the lower 8 bytes
+        counter.set(iv, 0);
+        let carry = blockCount;
+        for (let i = 15; i >= 8; i--) {
+            const sum = counter[i] + Number(carry & BigInt(0xFF));
+            counter[i] = sum & 0xFF;
+            carry = (carry >> BigInt(8)) + BigInt(sum >> 8);
+        }
+    } else {
+        // 8-byte IV: [IV (8 bytes)] || [blockCount big-endian (8 bytes)]
+        counter.set(iv.slice(0, 8), 0);
+        let bc = blockCount;
+        for (let i = 15; i >= 8; i--) {
+            counter[i] = Number(bc & BigInt(0xFF));
+            bc >>= BigInt(8);
+        }
     }
     return counter;
 }
@@ -236,7 +256,17 @@ function parseSENC(b, box) {
     const flags = (b[base+1] << 16) | (b[base+2] << 8) | b[base+3];
     const useSubsamples = (flags & 0x2) !== 0;
     const sampleCount = r32(b, base + 4);
-    const IV_SIZE = 8; // AWS MediaPackage CENC live streams always use 8-byte IVs
+
+    // Infer IV_SIZE from box geometry when no subsamples:
+    //   dataBytes = box.size - boxHdr(8) - fullboxHdr(4) - sampleCount(4) = box.size - 16
+    //   IV_SIZE = dataBytes / sampleCount  (valid: 8 or 16)
+    let IV_SIZE = 8;
+    if (!useSubsamples && sampleCount > 0) {
+        const dataBytes = box.size - 16;
+        const inferred = Math.floor(dataBytes / sampleCount);
+        if (inferred === 16) IV_SIZE = 16;
+        _log(`senc geometry: box=${box.size}B, ${sampleCount} samples → IV_SIZE=${IV_SIZE}`);
+    }
 
     let pos = base + 8;
     const samples = [];
@@ -261,6 +291,17 @@ function parseSENC(b, box) {
         }
     }
     return samples;
+}
+
+function parseTFHD(b, box) {
+    const base = box.pos + 8;
+    const flags = (b[base+1] << 16) | (b[base+2] << 8) | b[base+3];
+    let pos = base + 8; // skip version(1)+flags(3)+trackID(4)
+    if (flags & 0x000001) pos += 8; // base_data_offset
+    if (flags & 0x000002) pos += 4; // sample_description_index
+    if (flags & 0x000008) pos += 4; // default_sample_duration
+    if (flags & 0x000010) return r32(b, pos); // default_sample_size
+    return 0;
 }
 
 function parseTRUN(b, box) {
