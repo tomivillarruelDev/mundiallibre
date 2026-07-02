@@ -97,42 +97,74 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
         return;
     }
 
-    // On iOS 17+, ManagedMediaSource requires disableRemotePlayback to enable MSE.
-    // This must be set before Shaka attaches to the video element.
+    // iOS detection (all iOS browsers are WebKit — Chrome/Firefox/etc are skins over Safari)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    // On iOS 17+, ManagedMediaSource requires disableRemotePlayback before Shaka attaches.
     if (window.ManagedMediaSource) {
         video.disableRemotePlayback = true;
     }
 
-    // Attempt playback on all browsers — including iOS.
-    // isBrowserSupported() is overly conservative: it returns false on iOS even though
-    // Shaka 4.x polyfills ManagedMediaSource (iOS 17+) and has software ClearKey
-    // decryption that doesn't rely on the browser's CDM. We let it try and fall back
-    // only on actual failure via the error listeners and try/catch below.
     if (!shaka.Player.isBrowserSupported()) {
-        console.warn("[SHAKA] isBrowserSupported() = false — attempting anyway with polyfills.");
+        console.warn("[SHAKA] isBrowserSupported() = false — attempting anyway (iOS software CENC path).");
     }
 
     shakaPlayer = new shaka.Player(video);
 
-    // Configure DRM ClearKey
-    const clearKeyMap = {};
-    clearKeyMap[activeConfig.keyId] = activeConfig.key;
+    if (isIOS) {
+        // iOS path: software CENC AES-CTR decryption via Web Crypto.
+        //
+        // The stream uses the 'cenc' protection scheme (AES-128-CTR).
+        // iOS Safari CDM only supports 'cbcs' (AES-128-CBC), so native DRM fails
+        // silently → black screen. We bypass the CDM entirely:
+        //   1. Strip ContentProtection from the manifest so Shaka never calls requestMediaKeySession.
+        //   2. Patch init segments (encv→avc1, sinf→free) so MSE treats content as clear.
+        //   3. Decrypt each media segment's mdat via Web Crypto before Shaka sees it.
+        console.log("[SHAKA] iOS detected — activating software CENC decryption path.");
 
-    shakaPlayer.configure({
-        drm: {
-            clearKeys: clearKeyMap
-        },
-        manifest: {
-            dash: {
-                clockSyncUri: '' // Prevents clock errors on slow lines
+        const { createIOSDecryptor } = await import('./ios-cenc-decryptor.js');
+        const decryptor = await createIOSDecryptor(activeConfig.key);
+        const net = shakaPlayer.getNetworkingEngine();
+
+        // Filter 1: remove ContentProtection elements from DASH manifest.
+        net.registerResponseFilter((type, response) => {
+            if (type !== shaka.net.NetworkingEngine.RequestType.MANIFEST) return;
+            const xml = new TextDecoder().decode(new Uint8Array(response.data));
+            const stripped = xml
+                .replace(/<ContentProtection\b[^>]*\/>/g, '')
+                .replace(/<ContentProtection\b[\s\S]*?<\/ContentProtection>/g, '');
+            response.data = new TextEncoder().encode(stripped).buffer;
+        });
+
+        // Filter 2: transform init segments and decrypt media segments.
+        net.registerResponseFilter(async (type, response) => {
+            if (type !== shaka.net.NetworkingEngine.RequestType.SEGMENT) return;
+            const uri = response.uri ?? '';
+            if (uri.includes('_init.mp4')) {
+                response.data = decryptor.transformInit(response.data);
+            } else {
+                response.data = await decryptor.decryptMedia(response.data);
             }
-        },
-        streaming: {
-            bufferingGoal: 20,
-            rebufferingGoal: 10,
-            lowLatencyMode: true
-        }
-    });
+        });
+
+        // No clearKeys — DRM is handled by our filters above.
+        shakaPlayer.configure({
+            manifest: { dash: { clockSyncUri: '' } },
+            streaming: { bufferingGoal: 20, rebufferingGoal: 10, lowLatencyMode: false }
+        });
+
+    } else {
+        // Non-iOS path: native ClearKey via browser CDM.
+        const clearKeyMap = {};
+        clearKeyMap[activeConfig.keyId] = activeConfig.key;
+
+        shakaPlayer.configure({
+            drm: { clearKeys: clearKeyMap },
+            manifest: { dash: { clockSyncUri: '' } },
+            streaming: { bufferingGoal: 20, rebufferingGoal: 10, lowLatencyMode: true }
+        });
+    }
 
     // Listen for player errors
     shakaPlayer.addEventListener('error', (event) => {
