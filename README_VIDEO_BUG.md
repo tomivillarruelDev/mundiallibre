@@ -106,34 +106,36 @@ Para obtener la URL HLS se necesitaría acceso al panel de AWS MediaPackage del 
 ### Análisis del iframe de señal alternativa (`latamvidzfy.org/dsports.php`)
 - **Reproductor:** Bitmovin Player v8 (comercial, soporta DASH y HLS automáticamente)
 - **Anuncios:** Carga `acscdn.com/script/aclib.js` — **este es el script que genera los pop-ups/anuncios molestos al hacer click**
-- **Código ofuscado:** Las URLs del stream están ofuscadas con JavaScript para ocultar las fuentes reales
-- **Conclusión:** El iframe funciona en iOS porque Bitmovin negocia HLS automáticamente, pero viene con anuncios invasivos y sin el diseño de Mundial Libre
+- **Código ofuscado:** Las URLs del stream están ofuscadas con JavaScript para ocultar las fuentes reales (protegidas con múltiples capas de ofuscación y construcción dinámica `Function.constructor`).
+- **Problema con emulación:** Intentamos extraer la URL HLS (`.m3u8`) simulando un iPhone desde Chrome (PC), pero Bitmovin detecta que el navegador subyacente sigue soportando **MSE (Media Source Extensions)**, por lo que decide seguir cargando el manifiesto DASH (`.mpd`). Para obtener la URL HLS real, se necesitaría interceptar la red desde un dispositivo iOS físico o Safari en Mac.
+- **Conclusión:** El iframe funciona en iOS porque Bitmovin negocia HLS automáticamente (al no detectar MSE en iOS Safari), pero viene con anuncios invasivos y sin el diseño de Mundial Libre.
 
 ## 💡 Soluciones posibles (actualizado)
 
-### ✅ Opción recomendada: Condicionar el fallback solo para iOS (SIN anuncios)
-- **NO eliminar** `triggerFallback()` ni `hasFallenBack` — mantener las exportaciones intactas
-- **Modificar solo `performSwitch()`** dentro de `triggerFallback()` para detectar iOS
-- En iOS: mostrar un mensaje estilizado dentro del reproductor (📡 "Señal no disponible en este dispositivo")
-- En PC/Android: mantener el comportamiento actual sin cambios
-- **Cero anuncios** porque no se carga el iframe ni la página externa
-- Detección de iOS:
-```javascript
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) 
-  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-```
-- **Riesgo:** Bajo. Solo se modifica el interior de una función existente, sin tocar exportaciones ni interfaces.
+### ✅ Fix implementado: Eliminar el gate `isBrowserSupported()` (2 julio 2026)
 
-### Opción alternativa: Reproductor con HLS nativo para iOS
-- Requiere conseguir la URL `.m3u8` del mismo stream de DSports (acceso al panel AWS MediaPackage del proveedor)
-- Si se consigue, se puede usar HLS.js + el `<video>` nativo para reproducir en iOS con el mismo diseño
-- **Beneficio:** Reproductor funcional en iOS con el diseño de Mundial Libre
-- **Bloqueante:** No tenemos la URL HLS
+El error real no era "iOS no soporta DASH" sino que **el código fallaba antes de intentarlo**.
 
-### Opción descartada: Bitmovin Player
-- Es el mismo reproductor que usa la señal alternativa
-- Es un producto **pago** (licencia comercial)
-- No resuelve el problema de anuncios si se sigue usando el iframe
+`shaka.Player.isBrowserSupported()` devolvía `false` en iOS y se hacía fallback inmediato. Pero Shaka Player 4.x tiene:
+- **`ManagedMediaSource` polyfill** para iOS 17+ (habilitado con `shaka.polyfill.installAll()`)
+- **Software ClearKey decryption** — descifra los segmentos en JavaScript vía Web Crypto API, sin depender del CDM nativo del browser (el mismo mecanismo que usa Bitmovin internamente)
+
+Lo que hace Bitmovin no es "magia propietaria": es descifrado CENC client-side. Fetch del segmento → descifrado AES-CTR via Web Crypto → feed al SourceBuffer de MSE. Shaka 4.x puede hacer lo mismo.
+
+**Cambio aplicado en `player-shaka.js`:**
+1. Eliminado el `if/else` que cortocircuitaba la ejecución en iOS
+2. Agregado `video.disableRemotePlayback = true` cuando existe `ManagedMediaSource` (requisito de iOS 17+)
+3. Shaka intenta cargar el stream; si falla, los error listeners existentes activan `triggerFallback()`
+
+**Resultado esperado por versión iOS:**
+- iOS 17+: `ManagedMediaSource` disponible → muy probable que funcione ✅
+- iOS 15.4–16: MSE limitado, posible ⚠️
+- iOS < 15.4: fallback al mensaje de error (sin anuncios) ✅
+
+### Opción alternativa: URL HLS del proveedor
+- Requiere acceso al panel AWS MediaPackage del proveedor de DSports
+- Con la URL HLS, se puede usar HLS.js + `<video>` nativo para iOS
+- **Bloqueante:** No tenemos el UUID del endpoint HLS
 
 ## 📁 Archivos involucrados
 
@@ -141,3 +143,200 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
 - `js/modules/security.js` — Desencriptación de configuración (manifest URL, keys, iframeUrl)
 - `js/main.js` — Orquestación: pasa `iframeFallback` element a `initPlayer()`
 - `index.html` — Contiene el `<iframe id="iframe-fallback">` (línea ~145)
+
+---
+
+# Investigación profunda: Desofuscación completa de latamvidzfy.org/dsports.php
+
+**Fecha:** 2 de julio de 2026  
+**Estado:** ✅ Completada — Conclusión definitiva alcanzada
+
+## Objetivo
+
+Extraer la URL del manifiesto HLS (`.m3u8`) que utiliza el iframe de fallback para poder reproducir video en iOS sin anuncios y dentro de nuestro propio dominio.
+
+## Herramientas y archivos de investigación
+
+| Archivo | Descripción |
+|---------|-------------|
+| `_raw_iframe.html` | HTML completo capturado de `latamvidzfy.org/dsports.php` |
+| `_extract_hls.js` | Primer intento de desofuscación (Approach 6, fallido) |
+| `_extract_hls_v2.js` | Script definitivo que logró desofuscar el código completo |
+| `_decoded_eqs.js` | Código JavaScript final desofuscado (capa 3 del pipeline) |
+
+## Pipeline de ofuscación (3 capas)
+
+La página usa un sistema de ofuscación en cascada con tres capas:
+
+```
+Capa 1: IFr (shuffle cipher, semilla 4313768)
+   ↓ IFr(PsU)
+Capa 2: templateBody — función decodificadora de la capa 3
+   ↓ new Function('', templateBody)(IFr(eqsRaw))
+Capa 3: eQS — código JavaScript final con _$_db52
+   ↓ new Function('', eQS)(1859)
+Ejecución: inicialización de Bitmovin Player
+```
+
+### Capa 1: `IFr` — Shuffle Cipher
+
+```javascript
+function IFr(z) {
+    var i = 4313768;
+    var w = z.length;
+    var d = [];
+    for (var f = 0; f < w; f++) { d[f] = z.charAt(f) }
+    for (var f = 0; f < w; f++) {
+        var l = i * (f + 418) + (i % 34611);
+        var t = i * (f + 238) + (i % 19353);
+        var u = l % w; var s = t % w;
+        var o = d[u]; d[u] = d[s]; d[s] = o;
+        i = (l + t) % 4403120;
+    }
+    return d.join('');
+}
+```
+
+`IFr('tsnstvtcmurowcpeaoorjklufqircyxhbdgzn').substr(0, 11)` → `"constructor"` (truco para obtener `Function` sin escribirlo)
+
+### Capa 2: `templateBody` — Decoder interno
+
+Al decodificar `PsU` con `IFr`, se obtiene el cuerpo de una función que a su vez decodifica el payload de la capa 3. Es un segundo shuffle cipher con parámetros distintos (semilla dinámica pasada como argumento).
+
+Primer fragmento del templateBody decodificado:
+```
+var s=14,x=69,q=64;var f="abcdefghijklmnopqrstuvwxyz";
+var o=[70,65,79,94,74,88,87,60,76,75,86,85,71,66,89,82,72,81,80,90];
+...
+```
+
+### Capa 3: `eQS` — Código final (`_decoded_eqs.js`)
+
+Al ejecutar `new Function('', templateBody)(IFr(eqsRaw))`, se obtiene el JavaScript real:
+
+```javascript
+var _$_db52 = (function(e, x) {
+    // Tercer shuffle cipher con semilla 601898
+    var w = e.length; var m = [];
+    for (var t = 0; t < w; t++) { m[t] = e.charAt(t) }
+    for (var t = 0; t < w; t++) {
+        var z = x * (t + 73) + (x % 19454);
+        var f = x * (t + 157) + (x % 35750);
+        var l = z % w; var d = f % w;
+        var y = m[l]; m[l] = m[d]; m[d] = y;
+        x = (z + f) % 1628598;
+    }
+    var h = String.fromCharCode(127);
+    // Separadores de elementos del array resultante
+    return m.join('').split('%').join(h).split('#1').join('%').split('#0').join('#').split(h)
+})("Qa7a3ved8f9.lrt%itvpf:1//...", 601898);
+```
+
+## Resultado de la desofuscación: array `_$_db52`
+
+| Índice | Valor | Rol |
+|--------|-------|-----|
+| `[0]` | `latamvidzfy.org` | Verificación de hostname (anti-embeds externos) |
+| `[1]` | `https://google.com/` | Redirect si hostname no coincide |
+| `[2]` | `https://prope66bd35h.airspace-cdn.cbsivideo.com/out/v1/eb04c8bf15a94f14ad1d952659d422b7/manifest.mpd` | **URL del stream de video** |
+| `[3]` | `9afc53e82bb24c20a5835a84138f6c13` | `keyId` ClearKey DRM |
+| `[4]` | `abdd52917474f2342ff04f0d4722123a` | `key` ClearKey DRM |
+| `[5]` | `licensing.bitmovin.com` | Host interceptado en XHR |
+| `[6]` | `data:text/plain;charset=utf-8;base64,eyJzdGF0dXMiOiJncmFudGVkIiwibWVzc2FnZSI6IlRoZXJlIHlvdSBnby4ifQ==` | Respuesta falsa de licencia Bitmovin |
+| `[7]` | `DOMContentLoaded` | Evento para inicializar el player |
+| `[8]` | `player` | ID del `<div>` del reproductor |
+| `[9]` | `11d3698c-efdf-42f1-8769-54663995de2b` | Clave Bitmovin (bypasseada) |
+| `[10]` | `100%` | Ancho/alto del player (`style`) |
+
+La respuesta falsa en `[6]` decodificada en base64: `{"status":"granted","message":"There you go."}`
+
+## Mecanismo de bypass de licencia Bitmovin
+
+El código intercepta **todos los XHR** del player y redirige las peticiones de licencia a un Data URI local:
+
+```javascript
+var o = XMLHttpRequest.prototype.open; // guarda el original
+
+function _$af3733() {
+    var x = arguments[1]; // URL destino del XHR
+    if (x.includes('licensing.bitmovin.com')) {
+        arguments[1] = 'data:text/plain;charset=utf-8;base64,eyJzdGF0dXMiO...'
+        // → {"status":"granted","message":"There you go."}
+    }
+    return o.apply(this, arguments); // ejecuta el XHR (original o modificado)
+}
+
+XMLHttpRequest.prototype.open = _$af3733;
+```
+
+Cuando Bitmovin Player consulta su servidor de licencias, recibe la respuesta `granted` falsa y arranca sin licencia válida.
+
+## Llamada final al player
+
+```javascript
+new bitmovin.player.Player(document.getElementById('player'), {
+    key: '11d3698c-efdf-42f1-8769-54663995de2b', // fake key — bypasseada
+    playback: { autoplay: true, muted: false },
+    style: { width: '100%', height: '100%' },
+    tweaks: { BACKGROUND_ACTION_SUSPEND: false },
+    live: { catchup: { playbackRateThreshold: 0.075, seekThreshold: 5, playbackRate: 1.2 } }
+}).load({
+    dash: u,                                    // _$_db52[2] = manifest.mpd
+    drm: { clearkey: [{ keyId: i, key: k }] }  // _$_db52[3] y [4]
+})
+```
+
+## Conclusión definitiva: no existe URL HLS separada
+
+**El iframe de fallback usa exactamente la misma URL DASH y las mismas claves ClearKey que Shaka Player.** No hay ningún endpoint HLS (`.m3u8`) embebido en ninguna capa del código ofuscado.
+
+La URL del stream (`_$_db52[2]`) es idéntica a la que está en nuestra configuración desencriptada:
+```
+https://prope66bd35h.airspace-cdn.cbsivideo.com/out/v1/eb04c8bf15a94f14ad1d952659d422b7/manifest.mpd
+```
+
+## Por qué el iframe funciona en iOS y Shaka Player no
+
+Bitmovin Player v8 es un reproductor comercial con capacidades propietarias que Shaka Player (open source) no tiene:
+
+1. **Internal DASH-to-HLS adapter**: en iOS donde MSE está restringido, Bitmovin puede convertir internamente el manifiesto DASH y reproducir los segmentos CMAF a través del `<video>` nativo de Safari, construyendo un playlist HLS en memoria
+2. **Native player fallback**: si la ruta DASH falla completamente, Bitmovin tiene pipelines alternativos propietarios para iOS
+
+Shaka Player 4.x tiene soporte parcial para HLS, pero para reproducir **este** stream en iOS necesitaría una URL HLS real (con su UUID de endpoint propio en AWS MediaPackage), que no podemos derivar matemáticamente a partir de la URL DASH.
+
+## Anti-iframe detection script
+
+La página tiene un tercer script que detecta si está cargada dentro de un `<iframe sandbox>`:
+
+```javascript
+// Pseudocódigo del script de detección
+if (window.frameElement.hasAttribute('sandbox')) {
+    setTimeout(() => { location.href = '/block.html' }, 500);
+}
+```
+
+Consecuencia: agregar `sandbox` al iframe activa la detección y rompe la reproducción.
+
+## Opciones a futuro
+
+| Opción | Esfuerzo | Resultado iOS | Sin Anuncios |
+|--------|----------|---------------|--------------|
+| **A — Status quo** (mensaje error en iOS) | ✅ Ya implementado | ❌ Sin video | ✅ Sí |
+| **B — Sandbox modificado** (quitar `allow-popups` + `allow-same-origin`) | Bajo | ⚠️ Video con anuncios overlay (sin popups) | Parcial |
+| **C — URL HLS del proveedor** | Requiere acceso al panel AWS MediaPackage del proveedor | ✅ Video nativo | ✅ Sí |
+| **D — Proxy CORS/HLS** | Alto (requiere backend) | ✅ Video nativo | ✅ Sí |
+
+## Herramientas de investigación desarrolladas
+
+### `_extract_hls_v2.js` — Desofuscador offline
+
+Funciona sobre `_raw_iframe.html` sin necesidad de red. Implementa tres intentos de extracción en cascada:
+- **Attempt A**: ejecución directa en Node.js (exitoso para capa 2 → capa 3)
+- **Attempt B**: parcheo de `eval`/`Function` para capturar el código sin ejecutarlo
+- **Attempt C**: sandbox `vm` con mocks completos de APIs de browser
+
+Para re-ejecutar si se actualiza el HTML capturado:
+```bash
+node _extract_hls_v2.js
+# Genera: _decoded_eqs.js con el código de la capa 3
+```
