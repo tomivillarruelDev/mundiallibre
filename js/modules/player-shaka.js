@@ -288,6 +288,36 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
         }
     });
 
+    // When iOS destroys ManagedMediaSource during scroll/interaction, the video element
+    // fires 'emptied' and drops to readyState=0. retryStreaming() is useless at that point
+    // because there is no source — we need a full shakaPlayer.load() to rebuild the pipeline.
+    // We wait until the user stops touching (scrollGrace=false) to avoid reloading while
+    // iOS would destroy it again immediately.
+    let reloadInProgress = false;
+    video.addEventListener('emptied', () => {
+        if (!shakaReady || hasFallenBack || reloadInProgress) return;
+        reloadInProgress = true;
+        window.__iosLog && window.__iosLog('[reload] emptied — esperando fin de toque');
+
+        const doReload = async () => {
+            if (hasFallenBack) { reloadInProgress = false; return; }
+            if (scrollGrace) { setTimeout(doReload, 300); return; }
+            try {
+                window.__iosLog && window.__iosLog('[reload] shakaPlayer.load()...');
+                await shakaPlayer.load(activeConfig.manifest);
+                video.volume = volumeSlider.value;
+                video.play().catch(() => {});
+                window.__iosLog && window.__iosLog('[reload] OK');
+            } catch (e) {
+                window.__iosLog && window.__iosLog('[reload] FAILED: ' + e);
+                if (!hasFallenBack) triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
+            } finally {
+                reloadInProgress = false;
+            }
+        };
+        setTimeout(doReload, 300);
+    });
+
     // Returns true when we should NOT trigger fallback:
     // - During iOS native fullscreen (orientation errors)
     // - For 3s after exiting fullscreen (MSE re-stabilization)
