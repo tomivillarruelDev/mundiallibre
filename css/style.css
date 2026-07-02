@@ -394,8 +394,9 @@ body {
   transform: translateY(0);
 }
 
-.player-wrapper.hide-cursor {
-  cursor: none;
+.player-wrapper.hide-cursor,
+.player-wrapper.hide-cursor * {
+  cursor: none !important;
 }
 
 /* iOS pseudo-fullscreen: CSS-only fullscreen that keeps the ManagedMediaSource
@@ -1098,6 +1099,19 @@ body {
   gap: 8px;
   font-size: 14px;
   color: var(--text-primary);
+  opacity: 0;
+  animation: statsFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes statsFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .home-stats .stats-item {
