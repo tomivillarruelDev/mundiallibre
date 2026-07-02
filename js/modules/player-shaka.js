@@ -190,11 +190,25 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
         scrollGraceTimer = setTimeout(() => { scrollGrace = false; }, 2000);
     }, { passive: true });
 
+    // Grace period on app resume: when the user switches back from another app,
+    // ManagedMediaSource resumes and Shaka may fire transient CRITICAL errors.
+    let visibilityGrace = false;
+    let visibilityGraceTimer = null;
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            visibilityGrace = true;
+            clearTimeout(visibilityGraceTimer);
+            visibilityGraceTimer = setTimeout(() => { visibilityGrace = false; }, 3000);
+        }
+    });
+
     // Returns true when we should NOT trigger fallback:
     // - During iOS native fullscreen (orientation errors)
     // - For 3s after exiting fullscreen (MSE re-stabilization)
     // - During and 2s after scroll (video out of viewport on iOS)
-    const suppressFallback = () => !!video.webkitDisplayingFullscreen || postFullscreenGrace || scrollGrace;
+    // - For 3s after returning from background/another app
+    const suppressFallback = () =>
+        !!video.webkitDisplayingFullscreen || postFullscreenGrace || scrollGrace || visibilityGrace;
 
     // Listen for player errors — only fallback on CRITICAL severity (2).
     // RECOVERABLE errors (network hiccups, segment retries) are handled internally by Shaka.
