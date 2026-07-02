@@ -230,22 +230,34 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
 
     // Listen for player errors — only fallback on CRITICAL severity (2).
     // RECOVERABLE errors (network hiccups, segment retries) are handled internally by Shaka.
+    // When a CRITICAL error is suppressed (transient iOS interruption), retryStreaming()
+    // tells Shaka to resume — without it, Shaka stays dead and the screen goes black.
     shakaPlayer.addEventListener('error', (event) => {
         lastShakaErrorCode = event.detail.code;
         console.error("Shaka error code", event.detail.code, "severity", event.detail.severity, "object", event.detail);
         const isCritical = event.detail.severity === 2;
-        if (isCritical && !suppressFallback()) {
+        if (!isCritical) return;
+
+        if (suppressFallback()) {
+            setTimeout(() => {
+                if (!hasFallenBack) shakaPlayer.retryStreaming();
+            }, 800);
+        } else {
             triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
         }
     });
 
-    // Listen for video tag errors
-    // Skip MEDIA_ERR_ABORTED (code 1): fires on rapid play/pause and is not fatal.
-    // Skip everything while in iOS native fullscreen: rotation causes transient errors.
+    // Listen for video tag errors.
+    // Skip MEDIA_ERR_ABORTED (code 1): fires on rapid play/pause, not fatal.
+    // When suppressed, try to resume play — iOS may have paused the video internally.
     video.addEventListener('error', () => {
-        if (video.error
-            && video.error.code !== MediaError.MEDIA_ERR_ABORTED
-            && !suppressFallback()) {
+        if (!video.error || video.error.code === MediaError.MEDIA_ERR_ABORTED) return;
+
+        if (suppressFallback()) {
+            setTimeout(() => {
+                if (!hasFallenBack && video.paused) video.play().catch(() => {});
+            }, 800);
+        } else {
             console.error("Video element error code:", video.error.code, "message:", video.error.message);
             triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
         }
