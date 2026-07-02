@@ -171,17 +171,27 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
         });
     }
 
+    // Returns true when we should NOT trigger fallback:
+    // - During iOS native fullscreen: orientation changes cause transient errors
+    //   that the native player handles internally and recovers from.
+    const suppressFallback = () => !!video.webkitDisplayingFullscreen;
+
     // Listen for player errors
     shakaPlayer.addEventListener('error', (event) => {
         lastShakaErrorCode = event.detail.code;
         console.error("Shaka error code", event.detail.code, "object", event.detail);
-        triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
+        if (!suppressFallback()) {
+            triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
+        }
     });
 
-    // Listen for video tag errors — skip MEDIA_ERR_ABORTED (code 1) which fires on rapid
-    // play/pause cycles and is not a real failure (the stream is still healthy).
+    // Listen for video tag errors
+    // Skip MEDIA_ERR_ABORTED (code 1): fires on rapid play/pause and is not fatal.
+    // Skip everything while in iOS native fullscreen: rotation causes transient errors.
     video.addEventListener('error', () => {
-        if (video.error && video.error.code !== MediaError.MEDIA_ERR_ABORTED) {
+        if (video.error
+            && video.error.code !== MediaError.MEDIA_ERR_ABORTED
+            && !suppressFallback()) {
             console.error("Video element error code:", video.error.code, "message:", video.error.message);
             triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
         }
