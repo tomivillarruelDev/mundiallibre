@@ -1,6 +1,6 @@
 /* ui-controls.js - Video Player User Interface Controls Handler */
 
-import { shakaPlayer, hasFallenBack } from "./player-shaka.js";
+import { shakaPlayer, hasFallenBack, shakaReady } from "./player-shaka.js";
 
 /**
  * Formats time in seconds to HH:MM:SS or MM:SS format
@@ -55,7 +55,7 @@ export function setupUIControls(elements) {
   // Play/Pause Action — debounced to prevent rapid taps on iOS from corrupting state
   let playToggleLocked = false;
   const togglePlay = () => {
-    if (hasFallenBack || playToggleLocked) return;
+    if (hasFallenBack || playToggleLocked || !shakaReady) return;
     playToggleLocked = true;
     setTimeout(() => { playToggleLocked = false; }, 300);
 

@@ -2,6 +2,7 @@
 
 export let shakaPlayer = null;
 export let hasFallenBack = false;
+export let shakaReady = false;
 let lastShakaErrorCode = null;
 
 /**
@@ -171,10 +172,18 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
         });
     }
 
+    // Grace period after exiting iOS native fullscreen: the MSE pipeline takes a moment
+    // to re-stabilize and Shaka may fire transient CRITICAL errors during that window.
+    let postFullscreenGrace = false;
+    video.addEventListener('webkitendfullscreen', () => {
+        postFullscreenGrace = true;
+        setTimeout(() => { postFullscreenGrace = false; }, 3000);
+    });
+
     // Returns true when we should NOT trigger fallback:
-    // - During iOS native fullscreen: orientation changes cause transient errors
-    //   that the native player handles internally and recovers from.
-    const suppressFallback = () => !!video.webkitDisplayingFullscreen;
+    // - During iOS native fullscreen (orientation errors)
+    // - For 3 seconds after exiting fullscreen (MSE re-stabilization)
+    const suppressFallback = () => !!video.webkitDisplayingFullscreen || postFullscreenGrace;
 
     // Listen for player errors — only fallback on CRITICAL severity (2).
     // RECOVERABLE errors (network hiccups, segment retries) are handled internally by Shaka.
@@ -203,6 +212,7 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
         await shakaPlayer.load(activeConfig.manifest);
         console.log("Stream loaded natively successfully!");
         lastShakaErrorCode = null;
+        shakaReady = true;
         hideLoader(loader);
 
         // Set default volume
