@@ -94,12 +94,10 @@ export function transformInitSegment(data) {
                 setType4(b2, ep, 'avc1');
                 // encv: box-hdr(8) + SampleEntry(6+2=8) + VisualSampleEntry(70) = 86 bytes before inner boxes
                 patchSinf(b2, ep + 86, ep + es);
-                _log('init: encv→avc1, sinf patched at ep+86');
             } else if (et === 'enca') {
                 setType4(b2, ep, 'mp4a');
                 // enca: box-hdr(8) + SampleEntry(8) + AudioSampleEntry(8+2+2+2+2+4=20) = 36 bytes before inner boxes
                 patchSinf(b2, ep + 36, ep + es);
-                _log('init: enca→mp4a, sinf patched at ep+36');
             }
         });
     });
@@ -129,10 +127,10 @@ export async function decryptMediaSegment(data, cryptoKey) {
         if (t === 'moof') moofBox = { pos, size };
         else if (t === 'mdat') mdatBox = { pos, size };
     });
-    if (!moofBox || !mdatBox) { _log('No moof/mdat in segment!'); return src.buffer; }
+    if (!moofBox || !mdatBox) return src.buffer;
 
     const trafBox = findBox(src, moofBox.pos + 8, moofBox.pos + moofBox.size, ['traf']);
-    if (!trafBox) { _log('No traf in moof!'); return src.buffer; }
+    if (!trafBox) return src.buffer;
 
     let tfhdBox = null, sencBox = null, trunBox = null;
     walk(src, trafBox.pos + 8, trafBox.pos + trafBox.size, (b, pos, size, t) => {
@@ -140,19 +138,14 @@ export async function decryptMediaSegment(data, cryptoKey) {
         else if (t === 'senc') sencBox = { pos, size };
         else if (t === 'trun') trunBox = { pos, size };
     });
-    if (!sencBox) { _log('No senc in traf!'); return src.buffer; }
+    if (!sencBox) return src.buffer;
 
     const samples = parseSENC(src, sencBox);
     const trunSizes = trunBox ? parseTRUN(src, trunBox) : [];
     const tfhdDefaultSize = tfhdBox ? parseTFHD(src, tfhdBox) : 0;
-    const firstIV = samples[0] ? [...samples[0].iv].map(b => b.toString(16).padStart(2, '0')).join('') : 'none';
-    const hasSub = !!(samples[0]?.subsamples?.length);
-    const firstSize = trunSizes[0] ?? 0;
-    _log(`senc: ${samples.length}s | IV0=${firstIV} | sub=${hasSub} | trun[0]=${firstSize} | tfhdSz=${tfhdDefaultSize}`);
 
     const mdatStart = mdatBox.pos + 8;
     let mdatOffset = 0;
-    let decryptErrors = 0;
 
     for (let si = 0; si < samples.length; si++) {
         const { iv, subsamples } = samples[si];
@@ -173,15 +166,10 @@ export async function decryptMediaSegment(data, cryptoKey) {
                         mdatStart + mdatOffset + sampleByteOffset,
                         mdatStart + mdatOffset + sampleByteOffset + encBytes
                     );
-                    try {
-                        const clear = await crypto.subtle.decrypt(
-                            { name: 'AES-CTR', counter, length: 64 }, cryptoKey, slice
-                        );
-                        out.set(new Uint8Array(clear), mdatStart + mdatOffset + sampleByteOffset);
-                    } catch (e) {
-                        decryptErrors++;
-                        if (decryptErrors === 1) _log('AES-CTR decrypt fail: ' + e.message);
-                    }
+                    const clear = await crypto.subtle.decrypt(
+                        { name: 'AES-CTR', counter, length: 64 }, cryptoKey, slice
+                    );
+                    out.set(new Uint8Array(clear), mdatStart + mdatOffset + sampleByteOffset);
                     blockCount += BigInt(Math.ceil(encBytes / 16));
                     sampleByteOffset += encBytes;
                 }
@@ -196,23 +184,15 @@ export async function decryptMediaSegment(data, cryptoKey) {
             if (sampleSize > 0) {
                 const counter = buildCTRCounter(iv, BigInt(0));
                 const slice = src.slice(mdatStart + mdatOffset, mdatStart + mdatOffset + sampleSize);
-                try {
-                    const clear = await crypto.subtle.decrypt(
-                        { name: 'AES-CTR', counter, length: 64 }, cryptoKey, slice
-                    );
-                    out.set(new Uint8Array(clear), mdatStart + mdatOffset);
-                } catch (e) {
-                    decryptErrors++;
-                    if (decryptErrors === 1) _log('AES-CTR full-sample fail: ' + e.message);
-                }
+                const clear = await crypto.subtle.decrypt(
+                    { name: 'AES-CTR', counter, length: 64 }, cryptoKey, slice
+                );
+                out.set(new Uint8Array(clear), mdatStart + mdatOffset);
                 mdatOffset += sampleSize;
-            } else if (si === 0) {
-                _log('WARN: sampleSize=0 for full-sample si=0 (no trun sizes + no tfhd default)');
             }
         }
     }
 
-    if (decryptErrors > 0) _log(`Total decrypt errors: ${decryptErrors}`);
     return out.buffer;
 }
 
@@ -262,10 +242,8 @@ function parseSENC(b, box) {
     //   IV_SIZE = dataBytes / sampleCount  (valid: 8 or 16)
     let IV_SIZE = 8;
     if (!useSubsamples && sampleCount > 0) {
-        const dataBytes = box.size - 16;
-        const inferred = Math.floor(dataBytes / sampleCount);
+        const inferred = Math.floor((box.size - 16) / sampleCount);
         if (inferred === 16) IV_SIZE = 16;
-        _log(`senc geometry: box=${box.size}B, ${sampleCount} samples → IV_SIZE=${IV_SIZE}`);
     }
 
     let pos = base + 8;
