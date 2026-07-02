@@ -294,6 +294,9 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
     // We wait until the user stops touching (scrollGrace=false) to avoid reloading while
     // iOS would destroy it again immediately.
     let reloadInProgress = false;
+    let postReloadGrace = false;
+    let postReloadGraceTimer = null;
+
     video.addEventListener('emptied', () => {
         if (!shakaReady || hasFallenBack || reloadInProgress) return;
         reloadInProgress = true;
@@ -305,9 +308,14 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
             try {
                 window.__iosLog && window.__iosLog('[reload] shakaPlayer.load()...');
                 await shakaPlayer.load(activeConfig.manifest);
+                // iOS fires transient MEDIA_ERR_DECODE during the first seconds of stream
+                // re-initialization — suppress fallback while the pipeline settles.
+                postReloadGrace = true;
+                clearTimeout(postReloadGraceTimer);
+                postReloadGraceTimer = setTimeout(() => { postReloadGrace = false; }, 5000);
                 video.volume = volumeSlider.value;
                 video.play().catch(() => {});
-                window.__iosLog && window.__iosLog('[reload] OK');
+                window.__iosLog && window.__iosLog('[reload] OK — grace 5s');
             } catch (e) {
                 window.__iosLog && window.__iosLog('[reload] FAILED: ' + e);
                 if (!hasFallenBack) triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
@@ -323,8 +331,9 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
     // - For 3s after exiting fullscreen (MSE re-stabilization)
     // - During and 2s after scroll (video out of viewport on iOS)
     // - For 3s after returning from background/another app
+    // - For 5s after a forced reload (stream re-initialization)
     const suppressFallback = () =>
-        !!video.webkitDisplayingFullscreen || postFullscreenGrace || scrollGrace || visibilityGrace;
+        !!video.webkitDisplayingFullscreen || postFullscreenGrace || scrollGrace || visibilityGrace || postReloadGrace;
 
     // Listen for player errors — only fallback on CRITICAL severity (2).
     // RECOVERABLE errors (network hiccups, segment retries) are handled internally by Shaka.
