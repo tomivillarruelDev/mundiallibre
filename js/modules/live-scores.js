@@ -73,8 +73,21 @@ export async function detectLiveMatch(urlTitle) {
             if (!res.ok) continue;
             const data = await res.json();
             
-            // Find any match in progress ('in')
-            const liveEvent = data.events && data.events.find(ev => ev.status?.type?.state === 'in');
+            // Prioritize live matches ('in') first, then fall back to upcoming matches ('pre' starting in <= 30 mins)
+            const events = data.events || [];
+            let liveEvent = events.find(ev => ev.status?.type?.state === 'in');
+            if (!liveEvent) {
+                const now = new Date();
+                liveEvent = events.find(ev => {
+                    if (ev.status?.type?.state === 'pre') {
+                        const matchDate = new Date(ev.date);
+                        const diffMinutes = (matchDate - now) / 60000;
+                        return diffMinutes <= 30; // 30 minutes before kickoff
+                    }
+                    return false;
+                });
+            }
+
             if (liveEvent) {
                 const comp = liveEvent.competitions[0];
                 const homeCompetitor = comp.competitors.find(c => c.homeAway === 'home');
