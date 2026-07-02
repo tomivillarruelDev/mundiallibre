@@ -116,16 +116,36 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
         const wrapper = Object.assign(document.createElement('div'), {
             style: 'margin:8px 0;border:1px solid #0f0;border-radius:6px;overflow:hidden'
         });
-        const label = Object.assign(document.createElement('div'), {
-            style: 'background:#0f0;color:#000;font:bold 11px monospace;padding:3px 8px'
+        const header = Object.assign(document.createElement('div'), {
+            style: 'display:flex;align-items:center;justify-content:space-between;background:#0f0;padding:4px 8px'
         });
-        label.textContent = 'DEBUG LOG — tocá el textarea, Seleccionar todo, Copiar';
+        const label = Object.assign(document.createElement('span'), {
+            style: 'color:#000;font:bold 11px monospace'
+        });
+        label.textContent = 'DEBUG LOG';
+        const copyBtn = Object.assign(document.createElement('button'), {
+            style: 'background:#000;color:#0f0;border:1px solid #0f0;border-radius:4px;padding:4px 12px;font:bold 12px monospace;cursor:pointer'
+        });
+        copyBtn.textContent = '📋 COPIAR TODO';
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(panel.value).then(() => {
+                copyBtn.textContent = '✅ COPIADO';
+                setTimeout(() => { copyBtn.textContent = '📋 COPIAR TODO'; }, 2000);
+            }).catch(() => {
+                panel.select();
+                document.execCommand('copy');
+                copyBtn.textContent = '✅ COPIADO';
+                setTimeout(() => { copyBtn.textContent = '📋 COPIAR TODO'; }, 2000);
+            });
+        });
+        header.appendChild(label);
+        header.appendChild(copyBtn);
         const panel = Object.assign(document.createElement('textarea'), {
             id: '__dbg',
             readOnly: true,
-            style: 'display:block;width:100%;box-sizing:border-box;height:240px;margin:0;padding:6px;background:#0a0a0a;color:#0f0;font:11px monospace;border:none;resize:vertical;user-select:text;-webkit-user-select:text'
+            style: 'display:block;width:100%;box-sizing:border-box;height:240px;margin:0;padding:6px;background:#0a0a0a;color:#0f0;font:11px monospace;border:none;resize:vertical'
         });
-        wrapper.appendChild(label);
+        wrapper.appendChild(header);
         wrapper.appendChild(panel);
 
         // Insert right after the player container
