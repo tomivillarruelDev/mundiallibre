@@ -180,10 +180,28 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
         setTimeout(() => { postFullscreenGrace = false; }, 3000);
     });
 
-    // Grace period during and after scroll: iOS Safari interrupts ManagedMediaSource
-    // when the video element leaves the viewport, causing transient CRITICAL errors.
+    // Grace period during touch gestures (scroll, control taps, etc.):
+    // iOS fires 'scroll' events AFTER the viewport has already moved, so ManagedMediaSource
+    // can be interrupted before the first 'scroll' event arrives. 'touchstart' fires
+    // immediately when the finger touches the screen — before any scroll begins.
     let scrollGrace = false;
     let scrollGraceTimer = null;
+
+    const activateTouchGrace = () => {
+        scrollGrace = true;
+        clearTimeout(scrollGraceTimer);
+        scrollGraceTimer = null;
+    };
+    const scheduleTouchGraceEnd = () => {
+        clearTimeout(scrollGraceTimer);
+        scrollGraceTimer = setTimeout(() => { scrollGrace = false; }, 3000);
+    };
+
+    document.addEventListener('touchstart', activateTouchGrace, { passive: true });
+    document.addEventListener('touchend', scheduleTouchGraceEnd, { passive: true });
+    document.addEventListener('touchcancel', scheduleTouchGraceEnd, { passive: true });
+
+    // Desktop fallback: trackpad / wheel scroll has no touch events.
     window.addEventListener('scroll', () => {
         scrollGrace = true;
         clearTimeout(scrollGraceTimer);
