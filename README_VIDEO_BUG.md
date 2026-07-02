@@ -297,12 +297,9 @@ https://prope66bd35h.airspace-cdn.cbsivideo.com/out/v1/eb04c8bf15a94f14ad1d95265
 
 ## Por qué el iframe funciona en iOS y Shaka Player no
 
-Bitmovin Player v8 es un reproductor comercial con capacidades propietarias que Shaka Player (open source) no tiene:
+**Hipótesis inicial (incorrecta):** Bitmovin convierte DASH → HLS internamente.
 
-1. **Internal DASH-to-HLS adapter**: en iOS donde MSE está restringido, Bitmovin puede convertir internamente el manifiesto DASH y reproducir los segmentos CMAF a través del `<video>` nativo de Safari, construyendo un playlist HLS en memoria
-2. **Native player fallback**: si la ruta DASH falla completamente, Bitmovin tiene pipelines alternativos propietarios para iOS
-
-Shaka Player 4.x tiene soporte parcial para HLS, pero para reproducir **este** stream en iOS necesitaría una URL HLS real (con su UUID de endpoint propio en AWS MediaPackage), que no podemos derivar matemáticamente a partir de la URL DASH.
+**Conclusión real (confirmada):** Bitmovin hace **descifrado CENC por software** igual que lo que implementamos nosotros. No hay una URL HLS separada ni conversión de formato. Lo que hacía falta no era un endpoint HLS sino implementar el descifrado AES-CTR en JavaScript, bypasseando el CDM del browser.
 
 ## Anti-iframe detection script
 
@@ -317,14 +314,244 @@ if (window.frameElement.hasAttribute('sandbox')) {
 
 Consecuencia: agregar `sandbox` al iframe activa la detección y rompe la reproducción.
 
-## Opciones a futuro
+---
 
-| Opción | Esfuerzo | Resultado iOS | Sin Anuncios |
-|--------|----------|---------------|--------------|
-| **A — Status quo** (mensaje error en iOS) | ✅ Ya implementado | ❌ Sin video | ✅ Sí |
-| **B — Sandbox modificado** (quitar `allow-popups` + `allow-same-origin`) | Bajo | ⚠️ Video con anuncios overlay (sin popups) | Parcial |
-| **C — URL HLS del proveedor** | Requiere acceso al panel AWS MediaPackage del proveedor | ✅ Video nativo | ✅ Sí |
-| **D — Proxy CORS/HLS** | Alto (requiere backend) | ✅ Video nativo | ✅ Sí |
+# Implementación: Software CENC AES-CTR para iOS
+
+**Estado:** ✅ Resuelto y en producción  
+**Fecha de implementación:** 2 de julio de 2026  
+**Commit clave:** `112a39c`
+
+## Causa raíz del problema
+
+El stream usa el esquema de encriptación **CENC con AES-128-CTR** (indicado como `value="cenc"` en el manifiesto DASH). El CDM nativo de iOS Safari solo soporta **AES-128-CBC** (esquema `cbcs`). Resultado: el CDM falla silenciosamente, el video decodifica frames negros, sin audio.
+
+```
+Stream:   CENC AES-128-CTR  (value="cenc" en el manifiesto)
+iOS CDM:  solo soporta cbcs AES-128-CBC
+Resultado: pantalla negra + sin audio (no hay error explícito)
+```
+
+Esto es idéntico a lo que hace Bitmovin internamente en su SDK propietario: bypassear el CDM y descifrar con Web Crypto API.
+
+## Solución: descifrado por software con Shaka response filters
+
+Implementada en dos archivos nuevos/modificados:
+
+### Arquitectura de la solución
+
+```
+DASH Manifest
+    ↓ Shaka fetches
+[Filter 1] Strip <ContentProtection> elements
+    ↓ Shaka parses (no DRM setup)
+Init Segment (.mp4 con encv/enca)
+    ↓ Shaka fetches
+[Filter 2] transformInitSegment():
+    pssh → free   (elimina DRM init data)
+    encv → avc1   (video: encrypted → clear sample entry)
+    enca → mp4a   (audio: encrypted → clear sample entry)
+    sinf → free   (elimina scheme info — ver Bug crítico #1)
+    ↓ MSE acepta el stream como video claro (sin CDM)
+Media Segments (.mp4 con moof+mdat encriptado)
+    ↓ Shaka fetches
+[Filter 2] decryptMediaSegment():
+    Parsear moof→traf→senc (IVs + subsample info por sample)
+    Parsear moof→traf→trun (tamaños por sample)
+    Para cada sample: AES-CTR decrypt via crypto.subtle
+    ↓ MSE recibe mdat descifrado
+Video element decodifica y reproduce normalmente ✅
+```
+
+### Shaka Player 5.0.5 (requerido)
+
+Se actualizó de Shaka 4.3.5 a 5.0.5. La versión 5 tiene el polyfill de `ManagedMediaSource` para iOS 17+ que es necesario para que MSE funcione.
+
+Prerequisito adicional en `player-shaka.js`:
+```javascript
+if (window.ManagedMediaSource) {
+    video.disableRemotePlayback = true; // requisito de iOS 17+ para ManagedMediaSource
+}
+```
+
+## CENC AES-CTR: especificación del counter
+
+```
+Counter block (128 bits):
+┌─────────────────────────┬──────────────────────────────────┐
+│  IV (8 bytes, MSB)      │  Block counter (8 bytes, big-endian) │
+└─────────────────────────┴──────────────────────────────────┘
+
+Web Crypto: { name: 'AES-CTR', counter: Uint8Array(16), length: 64 }
+  length: 64 → los 64 bits más a la derecha son el contador (bytes 8-15)
+  Coincide exactamente con el spec CENC para IVs de 8 bytes.
+```
+
+Reglas del counter por sample:
+- El counter **se resetea** al principio de cada sample (nuevo IV del senc box)
+- El counter **NO se resetea** entre subsamples del mismo sample
+- El counter avanza `ceil(encBytes / 16)` bloques por cada subsample encriptado
+
+## Estructura de los segmentos fMP4 de AWS MediaPackage
+
+### Init segment
+```
+ftyp (file type box)
+moov
+  trak (video)
+    mdia → minf → stbl → stsd
+      encv (video encrypted sample entry)
+        [VisualSampleEntry: 6+2+70 = 78 bytes de campos fijos]
+        avcC (AVC decoder config)
+        sinf (scheme info — contiene tenc con IV size y KID)
+  trak (audio)
+    mdia → minf → stbl → stsd
+      enca (audio encrypted sample entry)
+        [AudioSampleEntry: 6+2+8+2+2+2+2+4 = 28 bytes de campos fijos]
+        mp4a / esds (audio decoder config)
+        sinf
+  pssh (DRM init data para Widevine/PlayReady)
+```
+
+### Media segment (video, con subsample encryption)
+```
+moof
+  traf
+    tfhd (default sample info)
+    trun (per-sample durations, sizes, flags)
+    senc (encryption info: IV + subsample structure por sample)
+      sample[i]:
+        IV (8 bytes)
+        subsample_count (2 bytes)
+        subsample[j]:
+          clearBytes (2 bytes) — bytes de NAL header sin encriptar
+          encBytes   (4 bytes) — bytes de NAL body encriptados
+mdat (datos reales, mix de clearBytes + encBytes intercalados)
+```
+
+### Media segment (audio, full-sample encryption)
+```
+moof
+  traf
+    tfhd
+    trun (per-sample sizes)
+    senc
+      sample[i]:
+        IV (8 bytes)
+        (sin subsample structure — todo el sample está encriptado)
+mdat (samples AAC encriptados contiguamente)
+```
+
+## Archivos implementados
+
+### `js/modules/ios-cenc-decryptor.js` (nuevo)
+
+| Función | Rol |
+|---------|-----|
+| `transformInitSegment(data)` | Parchea el init segment in-place para que MSE lo trate como stream claro |
+| `decryptMediaSegment(data, cryptoKey)` | Descifra el mdat de cada media segment via Web Crypto AES-CTR |
+| `buildCTRCounter(iv, blockCount)` | Construye el counter de 128 bits para AES-CTR según spec CENC |
+| `parseSENC(b, box)` | Parsea el senc box: IVs y subsample structure por sample |
+| `parseTRUN(b, box)` | Parsea el trun box: tamaños por sample para audio full-sample |
+| `parseTFHD(b, box)` | Parsea el tfhd box: default_sample_size como fallback para audio |
+| `createIOSDecryptor(keyHex)` | Factory: importa la AES key via Web Crypto y retorna `{transformInit, decryptMedia}` |
+
+### `js/modules/player-shaka.js` (modificado)
+
+- Rama iOS separada que registra dos response filters en el NetworkingEngine de Shaka
+- Detección de init segment por tipo de box (`ftyp`/`moov`) en vez de URI — más confiable
+- Sin `clearKeys` en la configuración — el CDM nunca se invoca
+
+## Bugs encontrados y corregidos durante el debug
+
+### Bug crítico #1: Offset incorrecto de sinf en encv (causa del black screen)
+
+**Síntoma:** Video negro + sin audio. Player mostraba controles y el indicador LIVE, pero sin contenido.
+
+**Causa:** En `transformInitSegment`, el search de `sinf` dentro de `encv` empezaba en `ep + 44` (offset incorrecto). `walk()` llegaba a esa posición dentro de los datos binarios de `VisualSampleEntry` (todos bytes en cero del campo `reserved`), leía `size = 0`, y cortaba inmediatamente sin encontrar `sinf`.
+
+```
+encv box layout:
+  ep+0  ..7  : box header (size 4B + type 4B)
+  ep+8  ..15 : SampleEntry (6B reserved + 2B data_reference_index)
+  ep+16 ..85 : VisualSampleEntry fields (70 bytes)
+               ← ep+44 apuntaba AQUÍ (en medio de los campos binarios)
+  ep+86 ..   : inner boxes (avcC, sinf, ...)  ← CORRECTO
+
+Código anterior: patchSinf(b2, ep + 8 + 36, ep + es)  ← ep + 44 (INCORRECTO)
+Código corregido: patchSinf(b2, ep + 86, ep + es)      ← ep + 86 (CORRECTO)
+```
+
+**Consecuencia del bug:** `sinf` quedaba intacto dentro del box renombrado de `encv` a `avc1`. iOS ManagedMediaSource (a diferencia de Chrome/Firefox en desktop) sí inspecciona el `sinf` dentro de `avc1` y trata de invocar el CDM. Como no hay CDM configurado, el decode falla silenciosamente.
+
+**Fix:**
+```javascript
+// ANTES (incorrecto):
+// encv visual fields: 6 reserved + 2 data-ref-idx + 28 visual = 36 bytes after header
+patchSinf(b2, ep + 8 + 36, ep + es);
+
+// DESPUÉS (correcto):
+// encv: box-hdr(8) + SampleEntry(6+2=8) + VisualSampleEntry(70) = 86 bytes before inner boxes
+patchSinf(b2, ep + 86, ep + es);
+```
+
+Nota: el offset de `enca` (`ep + 36`) SÍ era correcto porque AudioSampleEntry tiene solo 8+2+2+2+2+4 = 20 bytes de campos, total 8+8+20 = 36.
+
+### Bug #2: IV_SIZE hardcodeado a 8
+
+**Causa:** El CENC spec permite IVs de 8 o 16 bytes. El código asumía siempre 8.
+
+**Fix:** IV_SIZE se infiere del tamaño del senc box cuando no hay subsamples:
+```javascript
+// dataBytes = box.size - boxHdr(8) - fullboxHdr(4) - sampleCount(4)
+const inferred = Math.floor((box.size - 16) / sampleCount); // 8 o 16
+if (inferred === 16) IV_SIZE = 16;
+```
+
+Para este stream AWS MediaPackage confirmado: IV_SIZE = 8 (`senc geometry: box=2272B, 282 samples → IV_SIZE=8`).
+
+### Bug #3: Sin fallback para default_sample_size en audio
+
+**Causa:** Si `trun` no tiene el flag `sample_size_present` (0x200), `parseTRUN` devuelve todos los tamaños en 0, y el descifrado de audio se saltea completamente.
+
+**Fix:** Se agrega `parseTFHD()` que extrae `default_sample_size` de `tfhd`, y se usa como fallback:
+```javascript
+const sampleSize = trunSizes[si] || tfhdDefaultSize;
+```
+
+### Bug #4: Detección de init segment por URI
+
+**Causa:** El filtro original detectaba init segments chequeando si la URI incluía `_init.mp4`. Esto es frágil si AWS MediaPackage cambia el naming.
+
+**Fix:** Detección por tipo del primer box MP4:
+```javascript
+const firstBox = String.fromCharCode(bytes[4], bytes[5], bytes[6], bytes[7]);
+const isInit = firstBox === 'ftyp' || firstBox === 'moov';
+```
+
+## Proceso de debug en iOS (sin DevTools)
+
+Para diagnosticar en iOS sin acceso a consola, se agregó un **panel de debug visible en pantalla** (overlay verde en la parte superior del reproductor):
+
+```javascript
+// panel temporal — removido en producción tras confirmar fix
+const dbgPanel = Object.assign(document.createElement('div'), {
+    style: 'position:fixed;top:0;...color:#0f0;font:9px monospace;z-index:99999;'
+});
+window.__iosLog = (msg) => { /* append to panel */ };
+```
+
+El panel se inyectaba en el módulo `player-shaka.js` durante la rama iOS, y el módulo `ios-cenc-decryptor.js` escribía en él via `window.__iosLog`. Se removió en producción una vez confirmado el fix.
+
+### Logs del debug que confirmaron el fix
+
+```
+20:16:03 init: encv→avc1, sinf patched at ep+86     ← sinf ahora encontrado
+20:16:03 init: enca→mp4a, sinf patched at ep+36     ← audio también OK
+20:16:04 senc geometry: box=2272B, 282 samples → IV_SIZE=8   ← IV_SIZE confirmado
+20:16:04 senc: 282s | IV0=4000000000054fda | sub=false | trun[0]=321 | tfhdSz=0
+20:16:08 senc: 360s | IV0=0000000000054fdb | sub=true  | trun[0]=170338
+```
 
 ## Herramientas de investigación desarrolladas
 
