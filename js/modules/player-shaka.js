@@ -111,6 +111,39 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
         console.warn("[SHAKA] isBrowserSupported() = false — attempting anyway (iOS software CENC path).");
     }
 
+    // ── DEBUG PANEL (iOS only, remove after diagnosis) ──────────────────────────
+    if (isIOS) {
+        const panel = Object.assign(document.createElement('div'), {
+            id: '__dbg',
+            style: 'position:fixed;bottom:0;left:0;right:0;max-height:38vh;overflow-y:auto;background:rgba(0,0,0,.85);color:#0f0;font:10px monospace;z-index:99999;padding:4px;pointer-events:none'
+        });
+        document.body.appendChild(panel);
+        const ts = () => new Date().toISOString().slice(11,22);
+        window.__iosLog = (m) => {
+            const line = document.createElement('div');
+            line.textContent = ts() + ' ' + m;
+            panel.appendChild(line);
+            if (panel.children.length > 60) panel.removeChild(panel.firstChild);
+            panel.scrollTop = panel.scrollHeight;
+        };
+        // Intercept all events we care about
+        ['touchstart','touchend','touchcancel','scroll'].forEach(ev =>
+            document.addEventListener(ev, () => window.__iosLog('[touch] ' + ev), { passive: true })
+        );
+        ['play','pause','ended','stalled','waiting','suspend','emptied'].forEach(ev =>
+            video.addEventListener(ev, () => window.__iosLog('[video] ' + ev + ' paused=' + video.paused + ' readyState=' + video.readyState))
+        );
+        video.addEventListener('error', () =>
+            window.__iosLog('[video.error] code=' + (video.error && video.error.code))
+        );
+        document.addEventListener('visibilitychange', () =>
+            window.__iosLog('[visibility] ' + document.visibilityState)
+        );
+        video.addEventListener('webkitendfullscreen', () => window.__iosLog('[webkit] endfullscreen'));
+        video.addEventListener('webkitbeginfullscreen', () => window.__iosLog('[webkit] beginfullscreen'));
+    }
+    // ── END DEBUG PANEL ─────────────────────────────────────────────────────────
+
     shakaPlayer = new shaka.Player(video);
 
     if (isIOS) {
@@ -234,13 +267,15 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
     // tells Shaka to resume — without it, Shaka stays dead and the screen goes black.
     shakaPlayer.addEventListener('error', (event) => {
         lastShakaErrorCode = event.detail.code;
-        console.error("Shaka error code", event.detail.code, "severity", event.detail.severity, "object", event.detail);
         const isCritical = event.detail.severity === 2;
+        const sup = suppressFallback();
+        window.__iosLog && window.__iosLog('[shaka] code=' + event.detail.code + ' sev=' + event.detail.severity + ' suppress=' + sup + ' grace:scroll=' + scrollGrace + ' fs=' + postFullscreenGrace + ' vis=' + visibilityGrace);
+        console.error("Shaka error code", event.detail.code, "severity", event.detail.severity, "object", event.detail);
         if (!isCritical) return;
 
-        if (suppressFallback()) {
+        if (sup) {
             setTimeout(() => {
-                if (!hasFallenBack) shakaPlayer.retryStreaming();
+                if (!hasFallenBack) { window.__iosLog && window.__iosLog('[shaka] retryStreaming'); shakaPlayer.retryStreaming(); }
             }, 800);
         } else {
             triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
@@ -252,6 +287,7 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
     // When suppressed, try to resume play — iOS may have paused the video internally.
     video.addEventListener('error', () => {
         if (!video.error || video.error.code === MediaError.MEDIA_ERR_ABORTED) return;
+        window.__iosLog && window.__iosLog('[video.err] code=' + video.error.code + ' suppress=' + suppressFallback());
 
         if (suppressFallback()) {
             setTimeout(() => {
