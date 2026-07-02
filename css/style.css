@@ -177,9 +177,12 @@ body {
 .brand-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   text-decoration: none;
   transition: opacity 0.2s ease;
+  border: none;
+  background: transparent;
+  padding: 0;
 }
 
 .brand-logo:hover {
@@ -187,10 +190,17 @@ body {
 }
 
 .brand-logo-img {
-  height: 32px;
-  width: 32px;
+  height: 48px;
+  width: 48px;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: 12px;
+}
+
+.brand-logo-text-img {
+  height: 44px;
+  width: auto;
+  object-fit: contain;
+  display: block;
 }
 
 /* Signal status badge */
@@ -837,11 +847,17 @@ body {
   .app-container {
     padding: 0 40px; /* Scale down padding lateral for tablets */
   }
+  .navbar-inner {
+    padding: 0 40px; /* Scale down navbar inner padding for tablets */
+  }
 }
 
 @media (max-width: 768px) {
   .app-container {
     padding: 0 20px; /* Scale down padding lateral for mobile */
+  }
+  .navbar-inner {
+    padding: 0 20px; /* Scale down navbar inner padding for mobile */
   }
 
   .app-header {
@@ -849,12 +865,13 @@ body {
   }
 
   .brand-logo-img {
-    height: 32px;
-    width: 32px;
+    height: 36px;
+    width: 36px;
+    border-radius: 9px;
   }
 
-  .brand-logo-text {
-    font-size: 18px;
+  .brand-logo-text-img {
+    height: 32px;
   }
 
   .signal-title {
@@ -863,6 +880,28 @@ body {
 
   .signal-desc {
     font-size: 16px;
+  }
+}
+
+@media (max-width: 400px) {
+  .brand-logo {
+    gap: 8px;
+  }
+  .brand-logo-img {
+    height: 30px;
+    width: 30px;
+    border-radius: 8px;
+  }
+  .brand-logo-text-img {
+    height: 26px;
+  }
+  .signal-badge {
+    padding: 4px 10px;
+    height: 28px;
+    gap: 6px;
+  }
+  .live-text {
+    font-size: 10px;
   }
 }
 
