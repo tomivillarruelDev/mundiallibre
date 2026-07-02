@@ -67,26 +67,61 @@
     <!-- Favicon -->
     <link rel="icon" type="image/svg" href="assets/favicon.svg" />
 
+    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com" />
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net" />
+
     <!-- Shaka Player CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
+    <script
+      defer
+      src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
 
     <!-- GSAP for Animations -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script
+      defer
+      src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
     <!-- Canvas Confetti CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   </head>
   <body>
     <!-- MODERN STICKY NAVBAR (full-width, outside app-container) -->
     <header class="app-header" id="app-navbar">
       <div class="navbar-inner">
-        <a href="/" class="brand-logo" id="brand-home-link" style="display: flex; align-items: center; border: none; background: transparent; padding: 0; gap: 12px; text-decoration: none;">
-          <img src="assets/logo.svg" alt="Logo de Mundial Libre" class="brand-logo-img" style="height: 48px; width: 48px; object-fit: contain; border-radius: 12px;" />
+        <a
+          href="/"
+          class="brand-logo"
+          id="brand-home-link"
+          style="
+            display: flex;
+            align-items: center;
+            border: none;
+            background: transparent;
+            padding: 0;
+            gap: 12px;
+            text-decoration: none;
+          ">
+          <img
+            src="assets/logo.svg"
+            alt="Logo de Mundial Libre"
+            class="brand-logo-img"
+            style="
+              height: 48px;
+              width: 48px;
+              object-fit: contain;
+              border-radius: 12px;
+            " />
           <img
             src="assets/mundiallibre.svg"
             alt="Mundial Libre Logo"
             class="brand-logo-text-img"
-            style="height: 44px; width: auto; object-fit: contain; display: block;" />
+            style="
+              height: 44px;
+              width: auto;
+              object-fit: contain;
+              display: block;
+            " />
         </a>
 
         <div class="navbar-right">
@@ -262,9 +297,25 @@
 
         <!-- Signal description details -->
         <div class="signal-details animate-details">
-          <h2 class="signal-subtitle" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px;">
-            <img src="assets/mundiallibre.svg" alt="Mundial Libre" style="height: 32px; width: auto; object-fit: contain; display: block;" />
-            <span style="opacity: 0.3; font-weight: 300;">|</span>
+          <h2
+            class="signal-subtitle"
+            style="
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              flex-wrap: wrap;
+              margin-bottom: 4px;
+            ">
+            <img
+              src="assets/mundiallibre.svg"
+              alt="Mundial Libre"
+              style="
+                height: 32px;
+                width: auto;
+                object-fit: contain;
+                display: block;
+              " />
+            <span style="opacity: 0.3; font-weight: 300">|</span>
             <span class="subtitle-text">Transmisión Oficial</span>
             <span class="dot">•</span>
             <span class="live">En vivo</span>
@@ -288,28 +339,35 @@
             <span class="match-timer-badge" style="display: none"></span>
           </div>
           <p class="signal-desc">
-            Disfrutá de la transmisión en alta definición y baja latencia. Los partidos y eventos en vivo se actualizarán automáticamente.
+            Disfrutá de la transmisión en alta definición y baja latencia. Los
+            partidos y eventos en vivo se actualizarán automáticamente.
           </p>
           <!-- Match Events (Goals & Cards) Section -->
-          <div class="match-stats-container" style="display: none;">
+          <div class="match-stats-container" style="display: none">
             <!-- Column 1: Home Events -->
             <div class="stats-column home-stats">
               <div class="stats-column-header">
-                <img class="stats-team-logo home-stats-logo" src="assets/logo.svg" alt="Local Logo" />
+                <img
+                  class="stats-team-logo home-stats-logo"
+                  src="assets/logo.svg"
+                  alt="Local Logo" />
                 <span class="stats-team-name home-stats-name">Local</span>
               </div>
               <div class="stats-list home-stats-list">
                 <!-- Rendered dynamically -->
               </div>
             </div>
-            
+
             <div class="stats-divider"></div>
-            
+
             <!-- Column 2: Away Events -->
             <div class="stats-column away-stats">
               <div class="stats-column-header">
                 <span class="stats-team-name away-stats-name">Visitante</span>
-                <img class="stats-team-logo away-stats-logo" src="assets/logo.svg" alt="Visitante Logo" />
+                <img
+                  class="stats-team-logo away-stats-logo"
+                  src="assets/logo.svg"
+                  alt="Visitante Logo" />
               </div>
               <div class="stats-list away-stats-list">
                 <!-- Rendered dynamically -->
