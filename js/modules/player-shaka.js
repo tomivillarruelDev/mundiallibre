@@ -2,6 +2,7 @@
 
 export let shakaPlayer = null;
 export let hasFallenBack = false;
+let lastShakaErrorCode = null;
 
 /**
  * Triggers fallback sandboxed iframe when native DASH/DRM playback fails
@@ -28,6 +29,7 @@ export function triggerFallback(activeConfig, video, playerControls, centerPlayH
             if (spinner) spinner.style.display = "none";
             const loaderText = loader.querySelector(".loader-text");
             if (loaderText) {
+                const errInfo = lastShakaErrorCode ? ` [code ${lastShakaErrorCode}]` : '';
                 loaderText.innerHTML = `
                     <span style="font-size: 36px; margin-bottom: 10px; display: block;">📡</span>
                     <strong style="font-size: 15px; margin-bottom: 6px; display: block;">Señal no disponible en este dispositivo</strong>
@@ -35,6 +37,7 @@ export function triggerFallback(activeConfig, video, playerControls, centerPlayH
                         Tu navegador no soporta la reproducción DRM.<br>
                         Probá desde una PC o un dispositivo Android con Chrome.
                     </span>
+                    ${errInfo ? `<span style="font-size: 11px; opacity: 0.4; margin-top: 8px; display: block; font-family: monospace;">${errInfo}</span>` : ''}
                 `;
             }
         } else {
@@ -133,6 +136,7 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
 
     // Listen for player errors
     shakaPlayer.addEventListener('error', (event) => {
+        lastShakaErrorCode = event.detail.code;
         console.error("Shaka error code", event.detail.code, "object", event.detail);
         triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
     });
@@ -148,6 +152,7 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
     try {
         await shakaPlayer.load(activeConfig.manifest);
         console.log("Stream loaded natively successfully!");
+        lastShakaErrorCode = null;
         hideLoader(loader);
 
         // Set default volume
@@ -163,6 +168,7 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
             }
         });
     } catch (e) {
+        lastShakaErrorCode = e.code ?? e.message ?? 'load-exception';
         console.error("Shaka loading error:", e);
         triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
     }
