@@ -113,20 +113,34 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
 
     // ── DEBUG PANEL (iOS only, remove after diagnosis) ──────────────────────────
     if (isIOS) {
-        const panel = Object.assign(document.createElement('div'), {
-            id: '__dbg',
-            style: 'position:fixed;bottom:0;left:0;right:0;max-height:38vh;overflow-y:auto;background:rgba(0,0,0,.85);color:#0f0;font:10px monospace;z-index:99999;padding:4px;pointer-events:none'
+        const wrapper = Object.assign(document.createElement('div'), {
+            style: 'margin:8px 0;border:1px solid #0f0;border-radius:6px;overflow:hidden'
         });
-        document.body.appendChild(panel);
+        const label = Object.assign(document.createElement('div'), {
+            style: 'background:#0f0;color:#000;font:bold 10px monospace;padding:2px 6px'
+        });
+        label.textContent = '▼ DEBUG LOG — seleccioná y copiá';
+        const panel = Object.assign(document.createElement('pre'), {
+            id: '__dbg',
+            style: 'margin:0;padding:6px;background:#0a0a0a;color:#0f0;font:10px monospace;max-height:40vh;overflow-y:auto;white-space:pre-wrap;word-break:break-all;user-select:text;-webkit-user-select:text'
+        });
+        wrapper.appendChild(label);
+        wrapper.appendChild(panel);
+
+        // Insert right after the player container
+        const playerRef = document.getElementById('player-container');
+        if (playerRef && playerRef.parentNode) {
+            playerRef.parentNode.insertBefore(wrapper, playerRef.nextSibling);
+        } else {
+            document.body.appendChild(wrapper);
+        }
+
         const ts = () => new Date().toISOString().slice(11,22);
         window.__iosLog = (m) => {
-            const line = document.createElement('div');
-            line.textContent = ts() + ' ' + m;
-            panel.appendChild(line);
-            if (panel.children.length > 60) panel.removeChild(panel.firstChild);
+            panel.textContent += ts() + ' ' + m + '\n';
+            if (panel.textContent.length > 8000) panel.textContent = panel.textContent.slice(-6000);
             panel.scrollTop = panel.scrollHeight;
         };
-        // Intercept all events we care about
         ['touchstart','touchend','touchcancel','scroll'].forEach(ev =>
             document.addEventListener(ev, () => window.__iosLog('[touch] ' + ev), { passive: true })
         );
