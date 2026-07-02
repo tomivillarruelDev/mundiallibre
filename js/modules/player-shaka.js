@@ -117,12 +117,13 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
             style: 'margin:8px 0;border:1px solid #0f0;border-radius:6px;overflow:hidden'
         });
         const label = Object.assign(document.createElement('div'), {
-            style: 'background:#0f0;color:#000;font:bold 10px monospace;padding:2px 6px'
+            style: 'background:#0f0;color:#000;font:bold 11px monospace;padding:3px 8px'
         });
-        label.textContent = '▼ DEBUG LOG — seleccioná y copiá';
-        const panel = Object.assign(document.createElement('pre'), {
+        label.textContent = 'DEBUG LOG — tocá el textarea, Seleccionar todo, Copiar';
+        const panel = Object.assign(document.createElement('textarea'), {
             id: '__dbg',
-            style: 'margin:0;padding:6px;background:#0a0a0a;color:#0f0;font:10px monospace;max-height:40vh;overflow-y:auto;white-space:pre-wrap;word-break:break-all;user-select:text;-webkit-user-select:text'
+            readOnly: true,
+            style: 'display:block;width:100%;box-sizing:border-box;height:240px;margin:0;padding:6px;background:#0a0a0a;color:#0f0;font:11px monospace;border:none;resize:vertical;user-select:text;-webkit-user-select:text'
         });
         wrapper.appendChild(label);
         wrapper.appendChild(panel);
@@ -137,8 +138,8 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
 
         const ts = () => new Date().toISOString().slice(11,22);
         window.__iosLog = (m) => {
-            panel.textContent += ts() + ' ' + m + '\n';
-            if (panel.textContent.length > 8000) panel.textContent = panel.textContent.slice(-6000);
+            panel.value += ts() + ' ' + m + '\n';
+            if (panel.value.length > 8000) panel.value = panel.value.slice(-6000);
             panel.scrollTop = panel.scrollHeight;
         };
         ['touchstart','touchend','touchcancel','scroll'].forEach(ev =>
