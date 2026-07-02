@@ -199,7 +199,23 @@ export async function detectLiveMatch(urlTitle) {
 
     const matchName = homeTeam && awayTeam ? `${homeTeam} vs ${awayTeam}` : activeLiveEvent.name;
     const leagueName = activeLeagueName || "Copa Mundial";
-    const matchDetail = activeLiveEvent.status.type.detail;
+    let matchDetail = activeLiveEvent.status.type.detail;
+    if (activeLiveEvent.status.type.state === "pre") {
+      try {
+        const dateObj = new Date(activeLiveEvent.date);
+        const dayName = dateObj.toLocaleDateString('es-AR', { weekday: 'short', timeZone: 'America/Argentina/Buenos_Aires' });
+        const dayNum = dateObj.toLocaleDateString('es-AR', { day: 'numeric', timeZone: 'America/Argentina/Buenos_Aires' });
+        const monthName = dateObj.toLocaleDateString('es-AR', { month: 'long', timeZone: 'America/Argentina/Buenos_Aires' });
+        const timeStr = dateObj.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' }) + ' hs';
+        
+        const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1).replace('.', '');
+        const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+        
+        matchDetail = `${capitalizedDay}, ${dayNum} de ${capitalizedMonth} - ${timeStr}`;
+      } catch (e) {
+        matchDetail = "Programado";
+      }
+    }
 
     updateMetadata(
       matchName,
