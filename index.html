@@ -62,7 +62,7 @@
       rel="stylesheet" />
 
     <!-- CSS Stylesheet -->
-    <link rel="stylesheet" href="css/style.css?v=65" />
+    <link rel="stylesheet" href="css/style.css?v=71" />
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg" href="assets/favicon.svg" />
@@ -297,7 +297,7 @@
 
         <!-- Signal description details -->
         <div class="signal-details animate-details">
-          <h2
+          <p
             class="signal-subtitle"
             style="
               display: flex;
@@ -319,7 +319,7 @@
             <span class="subtitle-text">Transmisión Oficial</span>
             <span class="dot">•</span>
             <span class="live">En vivo</span>
-          </h2>
+          </p>
           <h1 class="signal-title">Señal en Vivo</h1>
 
           <div class="live-scoreboard-container" style="display: none">
@@ -381,10 +381,13 @@
           <div class="matches-agenda-container" style="display: none;">
             <!-- Left Side: Previous Match -->
             <div class="agenda-card prev-match-card">
-              <div class="agenda-card-title">PARTIDO ANTERIOR</div>
+              <div class="agenda-card-header">
+                <span class="agenda-card-title">PARTIDO ANTERIOR</span>
+                <span class="agenda-card-status">FINALIZADO</span>
+              </div>
               <div class="agenda-card-content">
                 <div class="agenda-team home-agenda">
-                  <img class="agenda-logo prev-home-logo" src="assets/logo.svg" alt="" />
+                  <img class="agenda-logo prev-home-logo" src="assets/logo.svg" alt="Escudo local anterior" />
                   <span class="agenda-name prev-home-name">-</span>
                 </div>
                 <div class="agenda-score-box">
@@ -394,20 +397,20 @@
                 </div>
                 <div class="agenda-team away-agenda">
                   <span class="agenda-name prev-away-name">-</span>
-                  <img class="agenda-logo prev-away-logo" src="assets/logo.svg" alt="" />
+                  <img class="agenda-logo prev-away-logo" src="assets/logo.svg" alt="Escudo visitante anterior" />
                 </div>
               </div>
-              <div class="agenda-card-status">Finalizado</div>
             </div>
-
-            <div class="agenda-divider"></div>
 
             <!-- Right Side: Next Match -->
             <div class="agenda-card next-match-card">
-              <div class="agenda-card-title">PRÓXIMO PARTIDO</div>
+              <div class="agenda-card-header">
+                <span class="agenda-card-title">PRÓXIMO PARTIDO</span>
+                <span class="agenda-card-status next-match-status">PROGRAMADO</span>
+              </div>
               <div class="agenda-card-content">
                 <div class="agenda-team home-agenda">
-                  <img class="agenda-logo next-home-logo" src="assets/logo.svg" alt="" />
+                  <img class="agenda-logo next-home-logo" src="assets/logo.svg" alt="Escudo local próximo" />
                   <span class="agenda-name next-home-name">-</span>
                 </div>
                 <div class="agenda-time-box">
@@ -415,10 +418,9 @@
                 </div>
                 <div class="agenda-team away-agenda">
                   <span class="agenda-name next-away-name">-</span>
-                  <img class="agenda-logo next-away-logo" src="assets/logo.svg" alt="" />
+                  <img class="agenda-logo next-away-logo" src="assets/logo.svg" alt="Escudo visitante próximo" />
                 </div>
               </div>
-              <div class="agenda-card-status next-match-status">Programado</div>
             </div>
           </div>
 
