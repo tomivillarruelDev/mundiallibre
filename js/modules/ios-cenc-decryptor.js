@@ -109,6 +109,8 @@ function patchSinf(b, start, end) {
 
 // ── Media segment decryption ──────────────────────────────────────────────────
 
+const _log = (m) => { try { if (window.__iosLog) window.__iosLog(m); } catch (_) {} };
+
 /**
  * Decrypts all encrypted samples in an fMP4 media segment.
  * Reads IV and subsample info from the senc box inside traf.
@@ -123,22 +125,27 @@ export async function decryptMediaSegment(data, cryptoKey) {
         if (t === 'moof') moofBox = { pos, size };
         else if (t === 'mdat') mdatBox = { pos, size };
     });
-    if (!moofBox || !mdatBox) return src.buffer;
+    if (!moofBox || !mdatBox) { _log('No moof/mdat in segment!'); return src.buffer; }
 
     const trafBox = findBox(src, moofBox.pos + 8, moofBox.pos + moofBox.size, ['traf']);
-    if (!trafBox) return src.buffer;
+    if (!trafBox) { _log('No traf in moof!'); return src.buffer; }
 
     let sencBox = null, trunBox = null;
     walk(src, trafBox.pos + 8, trafBox.pos + trafBox.size, (b, pos, size, t) => {
         if (t === 'senc') sencBox = { pos, size };
         else if (t === 'trun') trunBox = { pos, size };
     });
-    if (!sencBox) return src.buffer;
+    if (!sencBox) { _log('No senc in traf!'); return src.buffer; }
 
     const samples = parseSENC(src, sencBox);
     const trunSizes = trunBox ? parseTRUN(src, trunBox) : [];
+    const firstIV = samples[0] ? [...samples[0].iv].map(b => b.toString(16).padStart(2, '0')).join('') : 'none';
+    const hasSub = !!(samples[0]?.subsamples?.length);
+    _log(`senc: ${samples.length} samples | IV0=${firstIV} | subsamples=${hasSub} | trunSizes=${trunSizes.length}`);
+
     const mdatStart = mdatBox.pos + 8;
     let mdatOffset = 0;
+    let decryptErrors = 0;
 
     for (let si = 0; si < samples.length; si++) {
         const { iv, subsamples } = samples[si];
@@ -159,10 +166,15 @@ export async function decryptMediaSegment(data, cryptoKey) {
                         mdatStart + mdatOffset + sampleByteOffset,
                         mdatStart + mdatOffset + sampleByteOffset + encBytes
                     );
-                    const clear = await crypto.subtle.decrypt(
-                        { name: 'AES-CTR', counter, length: 64 }, cryptoKey, slice
-                    );
-                    out.set(new Uint8Array(clear), mdatStart + mdatOffset + sampleByteOffset);
+                    try {
+                        const clear = await crypto.subtle.decrypt(
+                            { name: 'AES-CTR', counter, length: 64 }, cryptoKey, slice
+                        );
+                        out.set(new Uint8Array(clear), mdatStart + mdatOffset + sampleByteOffset);
+                    } catch (e) {
+                        decryptErrors++;
+                        if (decryptErrors === 1) _log('AES-CTR decrypt fail: ' + e.message);
+                    }
                     blockCount += BigInt(Math.ceil(encBytes / 16));
                     sampleByteOffset += encBytes;
                 }
@@ -176,15 +188,23 @@ export async function decryptMediaSegment(data, cryptoKey) {
             if (sampleSize > 0) {
                 const counter = buildCTRCounter(iv, BigInt(0));
                 const slice = src.slice(mdatStart + mdatOffset, mdatStart + mdatOffset + sampleSize);
-                const clear = await crypto.subtle.decrypt(
-                    { name: 'AES-CTR', counter, length: 64 }, cryptoKey, slice
-                );
-                out.set(new Uint8Array(clear), mdatStart + mdatOffset);
+                try {
+                    const clear = await crypto.subtle.decrypt(
+                        { name: 'AES-CTR', counter, length: 64 }, cryptoKey, slice
+                    );
+                    out.set(new Uint8Array(clear), mdatStart + mdatOffset);
+                } catch (e) {
+                    decryptErrors++;
+                    if (decryptErrors === 1) _log('AES-CTR full-sample fail: ' + e.message);
+                }
                 mdatOffset += sampleSize;
+            } else if (si === 0) {
+                _log('WARN: trun sample size=0 for full-sample (audio?) si=0');
             }
         }
     }
 
+    if (decryptErrors > 0) _log(`Total decrypt errors: ${decryptErrors}`);
     return out.buffer;
 }
 

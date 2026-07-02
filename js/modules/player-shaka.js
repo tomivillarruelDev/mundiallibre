@@ -121,30 +121,60 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
         //   1. Strip ContentProtection from the manifest so Shaka never calls requestMediaKeySession.
         //   2. Patch init segments (encv→avc1, sinf→free) so MSE treats content as clear.
         //   3. Decrypt each media segment's mdat via Web Crypto before Shaka sees it.
-        console.log("[SHAKA] iOS detected — activating software CENC decryption path.");
+
+        // ── Debug panel (temporary — remove once iOS decryption is confirmed working) ──
+        const dbgPanel = Object.assign(document.createElement('div'), {
+            id: '_iosDbg',
+            style: 'position:fixed;top:0;left:0;right:0;background:rgba(0,0,0,0.88);color:#0f0;font:9px/1.35 monospace;padding:4px 6px;max-height:35vh;overflow-y:auto;z-index:99999;pointer-events:none;word-break:break-all;'
+        });
+        document.body.appendChild(dbgPanel);
+        const dbg = (msg) => {
+            console.log('[iOS]', msg);
+            const el = document.createElement('div');
+            el.textContent = new Date().toISOString().slice(11, 19) + ' ' + msg;
+            dbgPanel.appendChild(el);
+            if (dbgPanel.childElementCount > 50) dbgPanel.removeChild(dbgPanel.firstChild);
+            dbgPanel.scrollTop = dbgPanel.scrollHeight;
+        };
+        window.__iosLog = dbg;
+        dbg('iOS CENC path starting...');
 
         const { createIOSDecryptor } = await import('./ios-cenc-decryptor.js');
+        dbg('Module loaded');
         const decryptor = await createIOSDecryptor(activeConfig.key);
+        dbg('Key imported: ' + activeConfig.key.slice(0, 8) + '...');
         const net = shakaPlayer.getNetworkingEngine();
 
         // Filter 1: remove ContentProtection elements from DASH manifest.
         net.registerResponseFilter((type, response) => {
             if (type !== shaka.net.NetworkingEngine.RequestType.MANIFEST) return;
+            dbg('Manifest filter → stripping ContentProtection');
             const xml = new TextDecoder().decode(new Uint8Array(response.data));
             const stripped = xml
                 .replace(/<ContentProtection\b[^>]*\/>/g, '')
                 .replace(/<ContentProtection\b[\s\S]*?<\/ContentProtection>/g, '');
             response.data = new TextEncoder().encode(stripped).buffer;
+            dbg('Manifest stripped OK (' + response.data.byteLength + 'B)');
         });
 
         // Filter 2: transform init segments and decrypt media segments.
+        // Detection by first MP4 box type (reliable vs URI matching).
         net.registerResponseFilter(async (type, response) => {
             if (type !== shaka.net.NetworkingEngine.RequestType.SEGMENT) return;
-            const uri = response.uri ?? '';
-            if (uri.includes('_init.mp4')) {
+            const bytes = new Uint8Array(response.data);
+            const firstBox = bytes.length >= 8
+                ? String.fromCharCode(bytes[4], bytes[5], bytes[6], bytes[7]) : '';
+            const isInit = firstBox === 'ftyp' || firstBox === 'moov';
+            dbg(`Seg[${firstBox}] ${bytes.length}B → ${isInit ? 'INIT' : 'MEDIA'}`);
+            if (isInit) {
                 response.data = decryptor.transformInit(response.data);
+                dbg('Init transformed');
             } else {
-                response.data = await decryptor.decryptMedia(response.data);
+                try {
+                    response.data = await decryptor.decryptMedia(response.data);
+                } catch (e) {
+                    dbg('Decrypt ERR: ' + e.message);
+                }
             }
         });
 
