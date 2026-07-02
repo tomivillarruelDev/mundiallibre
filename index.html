@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Mundial Libre - Transmisión en vivo de partidos de fútbol en alta definición y baja latencia. Disfrutá de la Copa Mundial, Copa América y Eurocopa de forma gratuita." />
+      content="Mundial Libre - Mirá fútbol en vivo gratis en HD con baja latencia, señal estable y cobertura de los principales torneos internacionales." />
     <meta
       name="keywords"
       content="futbol libre, mundial libre, futbol en vivo, copa america en vivo, eurocopa en vivo, ver futbol gratis hd, transmision futbol online, dsports en vivo" />
@@ -16,10 +16,12 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://mundiallibre.com/" />
     <meta property="og:site_name" content="Mundial Libre" />
-    <meta property="og:title" content="Mundial Libre | Fútbol en Vivo HD" />
+    <meta
+      property="og:title"
+      content="Mundial Libre | Fútbol en Vivo Gratis en HD" />
     <meta
       property="og:description"
-      content="Mundial Libre - Transmisión en vivo de partidos de fútbol en alta definición y baja latencia. Disfrutá de la Copa Mundial, Copa América y Eurocopa de forma gratuita." />
+      content="Mundial Libre - Mirá fútbol en vivo gratis en HD con baja latencia, señal estable y cobertura de los principales torneos internacionales." />
     <meta
       property="og:image"
       content="https://mundiallibre.com/assets/logo.svg" />
@@ -27,10 +29,12 @@
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://mundiallibre.com/" />
-    <meta name="twitter:title" content="Mundial Libre | Fútbol en Vivo HD" />
+    <meta
+      name="twitter:title"
+      content="Mundial Libre | Fútbol en Vivo Gratis en HD" />
     <meta
       name="twitter:description"
-      content="Mundial Libre - Transmisión en vivo de partidos de fútbol en alta definición y baja latencia. Disfrutá de la Copa Mundial, Copa América y Eurocopa de forma gratuita." />
+      content="Mundial Libre - Mirá fútbol en vivo gratis en HD con baja latencia, señal estable y cobertura de los principales torneos internacionales." />
     <meta
       name="twitter:image"
       content="https://mundiallibre.com/assets/logo.svg" />
@@ -43,7 +47,7 @@
         "name": "Mundial Libre",
         "alternateName": "MundialLibre",
         "url": "https://mundiallibre.com/",
-        "description": "Mundial Libre es la plataforma líder para ver fútbol en vivo en alta definición y baja latencia de forma gratuita.",
+        "description": "Mundial Libre ofrece fútbol en vivo gratis en HD, con baja latencia y una experiencia de visualización estable.",
         "potentialAction": {
           "@type": "SearchAction",
           "target": "https://mundiallibre.com/?q={search_term_string}",
@@ -52,7 +56,7 @@
       }
     </script>
 
-    <title>Mundial Libre | Fútbol en Vivo HD</title>
+    <title>Mundial Libre | Fútbol en Vivo Gratis en HD</title>
 
     <!-- Google Fonts: Urbanist -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -62,7 +66,7 @@
       rel="stylesheet" />
 
     <!-- CSS Stylesheet -->
-    <link rel="stylesheet" href="css/style.css?v=85" />
+    <link rel="stylesheet" href="css/style.css?v=86" />
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg" href="assets/favicon.svg" />
@@ -137,6 +141,9 @@
     <div class="app-container">
       <!-- MAIN STREAMING CONTENT -->
       <main class="main-content">
+        <h1 class="visually-hidden">
+          Mundial Libre | Fútbol en Vivo Gratis en HD
+        </h1>
         <div class="player-container-relative">
           <div class="player-glow-backdrop"></div>
           <div class="player-wrapper animate-player" id="player-container">
@@ -320,7 +327,7 @@
             <span class="dot">•</span>
             <span class="live">En vivo</span>
           </p>
-          <h1 class="signal-title">Señal en Vivo</h1>
+          <h2 class="signal-title">Señal en Vivo</h2>
 
           <div class="live-scoreboard-container" style="display: none">
             <div class="scoreboard-team">
@@ -374,11 +381,11 @@
               </div>
             </div>
           </div>
-                   <!-- Match Section Divider (only visible if stats container is visible to avoid double margins) -->
-          <div class="match-section-divider" style="display: none;"></div>
+          <!-- Match Section Divider (only visible if stats container is visible to avoid double margins) -->
+          <div class="match-section-divider" style="display: none"></div>
 
           <!-- Matches Agenda (Previous & Next Match) Section -->
-          <div class="matches-agenda-container" style="display: none;">
+          <div class="matches-agenda-container" style="display: none">
             <!-- Left Side: Previous Match -->
             <div class="agenda-card prev-match-card">
               <div class="agenda-card-header">
@@ -387,7 +394,10 @@
               </div>
               <div class="agenda-card-content">
                 <div class="agenda-team home-agenda">
-                  <img class="agenda-logo prev-home-logo" src="assets/logo.svg" alt="Escudo local anterior" />
+                  <img
+                    class="agenda-logo prev-home-logo"
+                    src="assets/logo.svg"
+                    alt="Escudo local anterior" />
                   <span class="agenda-name prev-home-name">-</span>
                 </div>
                 <div class="agenda-score-box">
@@ -397,7 +407,10 @@
                 </div>
                 <div class="agenda-team away-agenda">
                   <span class="agenda-name prev-away-name">-</span>
-                  <img class="agenda-logo prev-away-logo" src="assets/logo.svg" alt="Escudo visitante anterior" />
+                  <img
+                    class="agenda-logo prev-away-logo"
+                    src="assets/logo.svg"
+                    alt="Escudo visitante anterior" />
                 </div>
               </div>
             </div>
@@ -406,11 +419,16 @@
             <div class="agenda-card next-match-card">
               <div class="agenda-card-header">
                 <span class="agenda-card-title">PRÓXIMO PARTIDO</span>
-                <span class="agenda-card-status next-match-status">PROGRAMADO</span>
+                <span class="agenda-card-status next-match-status"
+                  >PROGRAMADO</span
+                >
               </div>
               <div class="agenda-card-content">
                 <div class="agenda-team home-agenda">
-                  <img class="agenda-logo next-home-logo" src="assets/logo.svg" alt="Escudo local próximo" />
+                  <img
+                    class="agenda-logo next-home-logo"
+                    src="assets/logo.svg"
+                    alt="Escudo local próximo" />
                   <span class="agenda-name next-home-name">-</span>
                 </div>
                 <div class="agenda-time-box">
@@ -418,18 +436,21 @@
                 </div>
                 <div class="agenda-team away-agenda">
                   <span class="agenda-name next-away-name">-</span>
-                  <img class="agenda-logo next-away-logo" src="assets/logo.svg" alt="Escudo visitante próximo" />
+                  <img
+                    class="agenda-logo next-away-logo"
+                    src="assets/logo.svg"
+                    alt="Escudo visitante próximo" />
                 </div>
               </div>
             </div>
           </div>
 
           <!-- Tournament Bracket Section -->
-          <div class="tournament-bracket-container" style="display: none;">
+          <div class="tournament-bracket-container" style="display: none">
             <div class="bracket-section-header">
               <span class="bracket-section-title">CUADRO DE FASE FINAL</span>
             </div>
-            
+
             <!-- Bracket Tree View -->
             <div class="bracket-tree-view">
               <!-- Left Side -->
@@ -437,90 +458,161 @@
                 <div class="bracket-round round-32">
                   <div class="round-title">16avos</div>
                   <div class="round-matches-list" id="left-r32">
-                    <div class="bracket-match-slot" data-match-id="760489"></div>
-                    <div class="bracket-match-slot" data-match-id="760492"></div>
-                    <div class="bracket-match-slot" data-match-id="760486"></div>
-                    <div class="bracket-match-slot" data-match-id="760488"></div>
-                    <div class="bracket-match-slot" data-match-id="760497"></div>
-                    <div class="bracket-match-slot" data-match-id="760496"></div>
-                    <div class="bracket-match-slot" data-match-id="760494"></div>
-                    <div class="bracket-match-slot" data-match-id="760493"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760489"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760492"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760486"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760488"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760497"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760496"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760494"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760493"></div>
                   </div>
                 </div>
                 <div class="bracket-round round-16">
                   <div class="round-title">Octavos</div>
                   <div class="round-matches-list" id="left-r16">
-                    <div class="bracket-match-slot" data-match-id="760503"></div>
-                    <div class="bracket-match-slot" data-match-id="760502"></div>
-                    <div class="bracket-match-slot" data-match-id="760506"></div>
-                    <div class="bracket-match-slot" data-match-id="760507"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760503"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760502"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760506"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760507"></div>
                   </div>
                 </div>
                 <div class="bracket-round round-8">
                   <div class="round-title">Cuartos</div>
                   <div class="round-matches-list" id="left-r8">
-                    <div class="bracket-match-slot" data-match-id="760510"></div>
-                    <div class="bracket-match-slot" data-match-id="760511"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760510"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760511"></div>
                   </div>
                 </div>
                 <div class="bracket-round round-4">
                   <div class="round-title">Semifinal</div>
                   <div class="round-matches-list" id="left-r4">
-                    <div class="bracket-match-slot" data-match-id="760514"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760514"></div>
                   </div>
                 </div>
               </div>
-              
+
               <!-- Center Final -->
               <div class="bracket-center">
                 <div class="round-title">Gran Final</div>
                 <div class="final-match-slot" data-match-id="760517"></div>
               </div>
-              
+
               <!-- Right Side -->
               <div class="bracket-half bracket-right">
                 <div class="bracket-round round-4">
                   <div class="round-title">Semifinal</div>
                   <div class="round-matches-list" id="right-r4">
-                    <div class="bracket-match-slot" data-match-id="760515"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760515"></div>
                   </div>
                 </div>
                 <div class="bracket-round round-8">
                   <div class="round-title">Cuartos</div>
                   <div class="round-matches-list" id="right-r8">
-                    <div class="bracket-match-slot" data-match-id="760512"></div>
-                    <div class="bracket-match-slot" data-match-id="760513"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760512"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760513"></div>
                   </div>
                 </div>
                 <div class="bracket-round round-16">
                   <div class="round-title">Octavos</div>
                   <div class="round-matches-list" id="right-r16">
-                    <div class="bracket-match-slot" data-match-id="760504"></div>
-                    <div class="bracket-match-slot" data-match-id="760505"></div>
-                    <div class="bracket-match-slot" data-match-id="760508"></div>
-                    <div class="bracket-match-slot" data-match-id="760509"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760504"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760505"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760508"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760509"></div>
                   </div>
                 </div>
                 <div class="bracket-round round-32">
                   <div class="round-title">16avos</div>
                   <div class="round-matches-list" id="right-r32">
-                    <div class="bracket-match-slot" data-match-id="760487"></div>
-                    <div class="bracket-match-slot" data-match-id="760490"></div>
-                    <div class="bracket-match-slot" data-match-id="760491"></div>
-                    <div class="bracket-match-slot" data-match-id="760495"></div>
-                    <div class="bracket-match-slot" data-match-id="760498"></div>
-                    <div class="bracket-match-slot" data-match-id="760500"></div>
-                    <div class="bracket-match-slot" data-match-id="760499"></div>
-                    <div class="bracket-match-slot" data-match-id="760501"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760487"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760490"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760491"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760495"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760498"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760500"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760499"></div>
+                    <div
+                      class="bracket-match-slot"
+                      data-match-id="760501"></div>
                   </div>
                 </div>
               </div>
             </div>
-            
+
             <!-- Expand Overlay (Mobile only) -->
             <div class="bracket-expand-overlay">
-              <span class="expand-text">Tocar para desplegar cuadro completo</span>
-              <svg class="expand-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              <span class="expand-text"
+                >Tocar para desplegar cuadro completo</span
+              >
+              <svg
+                class="expand-chevron"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
             </div>
           </div>
 
