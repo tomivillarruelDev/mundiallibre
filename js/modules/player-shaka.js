@@ -13,12 +13,39 @@ export function triggerFallback(activeConfig, video, playerControls, centerPlayH
     console.warn("[PLAYER FALLBACK] Activando señal alternativa por fallo de reproducción DRM.");
 
     const performSwitch = () => {
-        video.style.display = "none";
-        playerControls.style.display = "none";
-        centerPlayHud.style.display = "none";
-        iframeFallback.style.display = "block";
-        iframeFallback.src = activeConfig.iframeUrl;
-        hideLoader(loader);
+        // Detect iOS (all iOS browsers use WebKit — Chrome/Firefox/etc are just skins over Safari)
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        if (isIOS) {
+            // iOS: Show styled message inside the player instead of loading iframe with ads
+            video.style.display = "none";
+            playerControls.style.display = "none";
+            centerPlayHud.style.display = "none";
+            loader.style.display = "flex";
+            loader.style.opacity = "1";
+            const spinner = loader.querySelector(".spinner");
+            if (spinner) spinner.style.display = "none";
+            const loaderText = loader.querySelector(".loader-text");
+            if (loaderText) {
+                loaderText.innerHTML = `
+                    <span style="font-size: 36px; margin-bottom: 10px; display: block;">📡</span>
+                    <strong style="font-size: 15px; margin-bottom: 6px; display: block;">Señal no disponible en este dispositivo</strong>
+                    <span style="font-size: 13px; opacity: 0.7; line-height: 1.5;">
+                        Tu navegador no soporta la reproducción DRM.<br>
+                        Probá desde una PC o un dispositivo Android con Chrome.
+                    </span>
+                `;
+            }
+        } else {
+            // PC/Android: Load iframe fallback as usual
+            video.style.display = "none";
+            playerControls.style.display = "none";
+            centerPlayHud.style.display = "none";
+            iframeFallback.style.display = "block";
+            iframeFallback.src = activeConfig.iframeUrl;
+            hideLoader(loader);
+        }
     };
 
     if (instant) {

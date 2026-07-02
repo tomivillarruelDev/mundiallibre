@@ -33,3 +33,111 @@ No apliques animaciones globales (`transition: all ...`) al contenedor principal
 
 ---
 *Manteniendo separadas las capas de efectos (blur/sombras) de la capa estricta del video (overflow/reproducción), te asegurás de que el video mantenga su calidad HD y sus colores vivos en el 100% de los navegadores.*
+
+---
+
+# Documentación: Señal Alternativa (iframe) se carga siempre en iOS
+
+**Estado:** ⚠️ Sin resolver — documentado para análisis futuro.  
+**Fecha de análisis:** 2 de julio de 2026
+
+## 🐛 El Problema
+
+En dispositivos iOS (tanto Safari como Chrome, Firefox, Brave, etc.), el reproductor Shaka Player no puede reproducir el stream DASH + ClearKey DRM. Como resultado, se activa automáticamente el fallback al iframe con la **señal alternativa**, que tiene anuncios y no respeta el diseño de la web.
+
+En **PC y Android con Chrome** funciona perfectamente porque Chrome real soporta DASH + ClearKey nativamente.
+
+## 🔍 Causa Raíz
+
+### ¿Por qué Chrome en iOS no es "Chrome real"?
+Apple obliga a que **todos los navegadores en iOS** usen el motor **WebKit** (el mismo de Safari) por debajo. Chrome, Firefox, Brave, etc. en iOS son solo "skins" sobre WebKit. Esto significa que tienen las **mismas limitaciones** que Safari:
+- ❌ **No soportan DASH nativamente** — solo soportan HLS (HTTP Live Streaming / `.m3u8`)
+- ❌ **ClearKey DRM tiene soporte limitado/roto en WebKit**
+- ❌ **MSE (Media Source Extensions)** tiene restricciones en iOS
+
+Como resultado, `shaka.Player.isBrowserSupported()` devuelve `false` en iOS, o si devuelve `true`, el stream falla al intentar cargar el manifiesto DASH con ClearKey.
+
+## 📍 Puntos de activación del Fallback en `player-shaka.js`
+
+La función `triggerFallback()` se llama desde 4 puntos distintos en `initPlayer()`:
+
+| Línea | Condición | Descripción |
+|-------|-----------|-------------|
+| ~66 | `!activeConfig` | La desencriptación de la configuración falló |
+| ~96 | `shakaPlayer 'error' event` | Error de Shaka Player durante reproducción |
+| ~103 | `video 'error' event` | Error del elemento `<video>` HTML5 |
+| ~130 | `!shaka.Player.isBrowserSupported()` | **← Este se activa en iOS.** Navegador no soportado |
+
+Cuando `triggerFallback()` se ejecuta:
+1. Oculta el `<video>` y los controles custom
+2. Muestra el `<iframe id="iframe-fallback">`
+3. Carga `activeConfig.iframeUrl` dentro del iframe (señal alternativa con anuncios)
+
+## ⚠️ Intento de fix revertido (2 julio 2026)
+
+Se intentó eliminar `triggerFallback()` y reemplazarlo por un mensaje de error estilizado (`showPlaybackError()`), pero el cambio rompió la reproducción también en Android. **El cambio fue revertido.**
+
+**Causa de la rotura en Android:** Al eliminar la función `triggerFallback` y la variable exportada `hasFallenBack`, otros módulos que las importaban fallaron. Además, la eliminación completa del flujo de fallback generó efectos secundarios. **Lección aprendida: no tocar las exportaciones ni eliminar funciones, solo modificar el comportamiento interno.**
+
+## 🔬 Investigación de la infraestructura del stream (2 julio 2026)
+
+### Configuración desencriptada del token
+```json
+{
+  "type": "dash",
+  "manifest": "https://prope66bd35h.airspace-cdn.cbsivideo.com/out/v1/eb04c8bf15a94f14ad1d952659d422b7/manifest.mpd",
+  "keyId": "9afc53e82bb24c20a5835a84138f6c13",
+  "key": "abdd52917474f2342ff04f0d4722123a",
+  "iframeUrl": "https://latamvidzfy.org/dsports.php"
+}
+```
+
+### Infraestructura del stream
+- **CDN:** CBS/Paramount (`airspace-cdn.cbsivideo.com`) — CDN de DSports
+- **Servicio:** AWS MediaPackage (genera endpoints DASH y HLS por separado con hashes diferentes)
+- **DRM:** ClearKey + Widevine + PlayReady (triple protección en el manifiesto DASH)
+- **Formato:** DASH live stream (`type="dynamic"`) con segmentos de video encriptados
+
+### ¿Se puede obtener la URL HLS (.m3u8)?
+**No directamente.** AWS MediaPackage genera endpoints separados para DASH y HLS, cada uno con un hash UUID diferente. No se puede derivar la URL HLS a partir de la URL DASH. Se intentaron variantes comunes (`manifest.m3u8`, `index.m3u8`, `master.m3u8`) y todas devolvieron 404.
+
+Para obtener la URL HLS se necesitaría acceso al panel de AWS MediaPackage del proveedor del stream.
+
+### Análisis del iframe de señal alternativa (`latamvidzfy.org/dsports.php`)
+- **Reproductor:** Bitmovin Player v8 (comercial, soporta DASH y HLS automáticamente)
+- **Anuncios:** Carga `acscdn.com/script/aclib.js` — **este es el script que genera los pop-ups/anuncios molestos al hacer click**
+- **Código ofuscado:** Las URLs del stream están ofuscadas con JavaScript para ocultar las fuentes reales
+- **Conclusión:** El iframe funciona en iOS porque Bitmovin negocia HLS automáticamente, pero viene con anuncios invasivos y sin el diseño de Mundial Libre
+
+## 💡 Soluciones posibles (actualizado)
+
+### ✅ Opción recomendada: Condicionar el fallback solo para iOS (SIN anuncios)
+- **NO eliminar** `triggerFallback()` ni `hasFallenBack` — mantener las exportaciones intactas
+- **Modificar solo `performSwitch()`** dentro de `triggerFallback()` para detectar iOS
+- En iOS: mostrar un mensaje estilizado dentro del reproductor (📡 "Señal no disponible en este dispositivo")
+- En PC/Android: mantener el comportamiento actual sin cambios
+- **Cero anuncios** porque no se carga el iframe ni la página externa
+- Detección de iOS:
+```javascript
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) 
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+```
+- **Riesgo:** Bajo. Solo se modifica el interior de una función existente, sin tocar exportaciones ni interfaces.
+
+### Opción alternativa: Reproductor con HLS nativo para iOS
+- Requiere conseguir la URL `.m3u8` del mismo stream de DSports (acceso al panel AWS MediaPackage del proveedor)
+- Si se consigue, se puede usar HLS.js + el `<video>` nativo para reproducir en iOS con el mismo diseño
+- **Beneficio:** Reproductor funcional en iOS con el diseño de Mundial Libre
+- **Bloqueante:** No tenemos la URL HLS
+
+### Opción descartada: Bitmovin Player
+- Es el mismo reproductor que usa la señal alternativa
+- Es un producto **pago** (licencia comercial)
+- No resuelve el problema de anuncios si se sigue usando el iframe
+
+## 📁 Archivos involucrados
+
+- `js/modules/player-shaka.js` — Lógica de Shaka Player y fallback al iframe (`triggerFallback()`)
+- `js/modules/security.js` — Desencriptación de configuración (manifest URL, keys, iframeUrl)
+- `js/main.js` — Orquestación: pasa `iframeFallback` element a `initPlayer()`
+- `index.html` — Contiene el `<iframe id="iframe-fallback">` (línea ~145)
