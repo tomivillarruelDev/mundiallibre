@@ -296,11 +296,19 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
     let reloadInProgress = false;
     let postReloadGrace = false;
     let postReloadGraceTimer = null;
+    let reloadAttempts = 0;
+    video.addEventListener('playing', () => { reloadAttempts = 0; });
 
     video.addEventListener('emptied', () => {
         if (!shakaReady || hasFallenBack || reloadInProgress) return;
+        if (reloadAttempts >= 3) {
+            window.__iosLog && window.__iosLog('[reload] max intentos alcanzado — fallback');
+            triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
+            return;
+        }
         reloadInProgress = true;
-        window.__iosLog && window.__iosLog('[reload] emptied — esperando fin de toque');
+        reloadAttempts++;
+        window.__iosLog && window.__iosLog('[reload] emptied #' + reloadAttempts + ' — esperando fin de toque');
 
         const doReload = async () => {
             if (hasFallenBack) { reloadInProgress = false; return; }
