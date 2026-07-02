@@ -1419,8 +1419,6 @@ body {
               transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
               background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform, border-color, background-color;
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
 }
 
 .bracket-match-node:hover {
@@ -1518,8 +1516,6 @@ body {
   width: 100%;
   box-shadow: 0 8px 32px rgba(255, 230, 0, 0.05);
   transition: transform 0.2s ease, border-color 0.2s ease;
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
 }
 
 .final-match-card:hover {
@@ -1552,14 +1548,13 @@ body {
     background: rgba(18, 18, 22, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.03);
     padding: 12px;
-    max-height: 3500px;
-    overflow: visible;
+    max-height: 4000px;
+    overflow: hidden; /* ALWAYS hidden on mobile to prevent WebKit scroll clipping bugs */
     transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease, background-color 0.3s ease;
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
-    will-change: max-height;
   }
 
   .tournament-bracket-container.collapsed {
