@@ -567,3 +567,157 @@ Para re-ejecutar si se actualiza el HTML capturado:
 node _extract_hls_v2.js
 # Genera: _decoded_eqs.js con el código de la capa 3
 ```
+
+---
+
+# Estabilidad del player en iOS: errores falsos de "Señal no disponible"
+
+**Estado:** ✅ Resuelto y en producción  
+**Fecha:** 2 de julio de 2026  
+**Commits:** `e97d032`, `41474ca`, `3da5ab9`, `4087915`, `7d5239f`
+
+## El problema
+
+Después de que el stream iOS con descifrado CENC por software funcionó, aparecieron múltiples escenarios donde el mensaje de error "Señal no disponible en este dispositivo" se disparaba sin que el stream estuviera realmente muerto. Todos eran **falsos positivos**: eventos de error transitorios propios del ciclo de vida de iOS Safari + ManagedMediaSource.
+
+## Escenarios identificados y sus causas
+
+### 1. Rotación del dispositivo en fullscreen nativo
+
+**Síntoma:** Al rotar el iPhone estando en pantalla completa (fullscreen nativo de iOS via `webkitEnterFullscreen()`), aparecía el error al terminar de rotar.
+
+**Causa:** iOS Safari delega el control del video al sistema operativo durante el fullscreen nativo. Mientras el sistema rota la pantalla, el pipeline ManagedMediaSource recibe interrupciones que Shaka interpreta como errores CRITICAL. Estos errores son transitorios y el reproductor nativo los resuelve solo.
+
+**Detección:** `video.webkitDisplayingFullscreen` es `true` mientras el video está en fullscreen nativo.
+
+**Fix:** La función `suppressFallback()` retorna `true` (no hacer fallback) mientras `video.webkitDisplayingFullscreen` sea verdadero.
+
+### 2. Salida del fullscreen nativo
+
+**Síntoma:** Después de salir del fullscreen (tapping "Listo" o swipe down), aparecía el error en los siguientes segundos.
+
+**Causa:** Al salir del fullscreen nativo, `webkitDisplayingFullscreen` pasa a `false` inmediatamente, pero ManagedMediaSource necesita 1-2 segundos para re-estabilizar su pipeline. Shaka puede disparar errores CRITICAL durante esa ventana de transición.
+
+**Detección:** El evento `webkitendfullscreen` en el elemento `<video>` se dispara al salir del fullscreen nativo.
+
+**Fix:** Al recibir `webkitendfullscreen`, se activa `postFullscreenGrace = true` durante 3 segundos.
+
+### 3. Scroll (video sale del viewport)
+
+**Síntoma:** Al scrollear hacia abajo para ver los marcadores o el scoreboard, el stream se cortaba y aparecía el error.
+
+**Causa:** iOS Safari suspende o interrumpe el pipeline ManagedMediaSource cuando el elemento `<video>` sale del viewport durante el scroll. Shaka detecta la interrupción como un error CRITICAL.
+
+**Detección:** Evento `scroll` en `window`.
+
+**Fix:** Al recibir cualquier evento `scroll`, se activa `scrollGrace = true`. El flag se desactiva 2 segundos después del último evento scroll.
+
+### 4. Cambio de app / bloqueo de pantalla
+
+**Síntoma:** Al cambiar a otra app (o recibir una notificación que minimiza Safari) y volver, aparecía el error.
+
+**Causa:** Cuando la pestaña pasa a `document.visibilityState = 'hidden'`, iOS suspende ManagedMediaSource. Al volver (`visibilityState = 'visible'`), el pipeline reanuda pero puede disparar errores CRITICAL durante la reanudación.
+
+**Detección:** Evento `visibilitychange` en `document`.
+
+**Fix:** Al detectar transición a `'visible'`, se activa `visibilityGrace = true` durante 3 segundos.
+
+### 5. Click rápido al cargar la página
+
+**Síntoma:** Al cargar la página y clickear play antes de que Shaka terminara de cargar el manifest, aparecía el error.
+
+**Causa:** `setupUIControls` se registra antes que `initPlayer` corra (hay un `setTimeout` de 250ms en `main.js`). Si el usuario clickea el player container durante la carga, `video.play()` se invoca antes de que Shaka haya conectado su pipeline, lo que puede causar errores.
+
+**Fix:** Se exporta la flag `shakaReady` desde `player-shaka.js`. Se setea a `true` solo después de que `shakaPlayer.load()` resuelve exitosamente. En `ui-controls.js`, `togglePlay()` retorna inmediatamente si `!shakaReady`.
+
+### 6. Click rápido repetitivo (play/pause rápido)
+
+**Síntoma:** Hacer tap rápidamente varias veces sobre el player disparaba el error.
+
+**Causa:** El evento `MEDIA_ERR_ABORTED` (código 1 de `MediaError`) se dispara en el elemento `<video>` cuando se llama `play()` y luego `pause()` antes de que el frame anterior se reproduzca. Esto es normal e interno, no indica fallo del stream.
+
+**Fix (doble):**
+- El video error listener ignora `video.error.code === 1` (`MEDIA_ERR_ABORTED`).
+- `togglePlay()` tiene un lock de 300ms: una vez ejecutado, ignora nuevos clicks durante 300ms.
+
+### 7. Botón de fullscreen roto en iOS
+
+**Síntoma:** El botón de fullscreen no hacía nada en iOS.
+
+**Causa:** `playerContainer.requestFullscreen()` no existe en iOS Safari. La API estándar de fullscreen no funciona sobre elementos `<div>` en iOS; solo existe en el elemento `<video>` con la API propietaria de WebKit.
+
+**Fix:** Para iOS, `toggleFullscreen()` llama directamente a `video.webkitEnterFullscreen()`.
+
+### 8. Errores RECOVERABLE de Shaka tratados como fatales
+
+**Síntoma:** Errores de red transitorios (timeout de un segmento, retry interno de Shaka) disparaban el fallback.
+
+**Causa:** El listener del evento `'error'` de Shaka Player disparaba `triggerFallback()` ante cualquier error, sin discriminar la severidad. Shaka clasifica sus errores en `RECOVERABLE` (severidad 1, Shaka los reintenta solo) y `CRITICAL` (severidad 2, no hay recuperación posible).
+
+**Fix:** Solo se llama a `triggerFallback()` cuando `event.detail.severity === 2`.
+
+### 9. Seek no funcionaba en iOS (touch)
+
+**Síntoma:** La barra de progreso no respondía al touch en iOS.
+
+**Causa:** Los event listeners de seek estaban implementados solo con `mousedown`/`mousemove`/`mouseup`. En iOS no existen eventos de mouse; se usan eventos táctiles (`touchstart`/`touchmove`/`touchend`).
+
+**Fix:** Se agregaron listeners táctiles paralelos a los de mouse, con `e.preventDefault()` para evitar scroll accidental mientras se arrastra la barra.
+
+## Arquitectura final de `suppressFallback()`
+
+```javascript
+// player-shaka.js — dentro de initPlayer()
+
+let postFullscreenGrace = false;
+video.addEventListener('webkitendfullscreen', () => {
+    postFullscreenGrace = true;
+    setTimeout(() => { postFullscreenGrace = false; }, 3000);
+});
+
+let scrollGrace = false;
+let scrollGraceTimer = null;
+window.addEventListener('scroll', () => {
+    scrollGrace = true;
+    clearTimeout(scrollGraceTimer);
+    scrollGraceTimer = setTimeout(() => { scrollGrace = false; }, 2000);
+}, { passive: true });
+
+let visibilityGrace = false;
+let visibilityGraceTimer = null;
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        visibilityGrace = true;
+        clearTimeout(visibilityGraceTimer);
+        visibilityGraceTimer = setTimeout(() => { visibilityGrace = false; }, 3000);
+    }
+});
+
+const suppressFallback = () =>
+    !!video.webkitDisplayingFullscreen  // en fullscreen nativo iOS
+    || postFullscreenGrace              // 3s tras salir de fullscreen
+    || scrollGrace                      // 2s tras cualquier scroll
+    || visibilityGrace;                 // 3s tras volver de background
+```
+
+## Tabla de decisión: cuándo se activa el fallback
+
+| Error | ¿Se activa fallback? | Razón |
+|---|---|---|
+| Shaka RECOVERABLE (severity=1) | ❌ No | Shaka lo resuelve solo |
+| Shaka CRITICAL en fullscreen nativo | ❌ No | `webkitDisplayingFullscreen = true` |
+| Shaka CRITICAL al salir de fullscreen | ❌ No | `postFullscreenGrace` (3s) |
+| Shaka CRITICAL al scrollear | ❌ No | `scrollGrace` (2s) |
+| Shaka CRITICAL al volver de otra app | ❌ No | `visibilityGrace` (3s) |
+| `MEDIA_ERR_ABORTED` (play/pause rápido) | ❌ No | Excluido explícitamente (code 1) |
+| Click antes de que Shaka cargue | ❌ No | `!shakaReady` bloquea togglePlay |
+| Stream genuinamente muerto | ✅ Sí | Error CRITICAL fuera de toda grace period |
+| Config decryption fail | ✅ Sí | `instant=true`, error de arranque |
+| `shakaPlayer.load()` rechaza | ✅ Sí | Manifiesto inalcanzable, error de arranque |
+
+## Archivos modificados
+
+| Archivo | Cambio |
+|---|---|
+| `js/modules/player-shaka.js` | `suppressFallback()` con 4 grace periods; filtro por `severity === 2`; `shakaReady = true` post-load; `postFullscreenGrace` via `webkitendfullscreen` |
+| `js/modules/ui-controls.js` | `togglePlay` gated con `shakaReady`; debounce 300ms; `webkitEnterFullscreen` para iOS; touch listeners para seek |
