@@ -398,6 +398,21 @@ body {
   cursor: none;
 }
 
+/* iOS pseudo-fullscreen: CSS-only fullscreen that keeps the ManagedMediaSource
+   pipeline intact. webkitEnterFullscreen() hands control to native iOS player
+   which breaks our Shaka response filters on orientation change. */
+.player-wrapper.ios-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+  aspect-ratio: auto !important;
+  z-index: 9999 !important;
+  border-radius: 0 !important;
+  border: none !important;
+}
+
 /* Custom Seekbar */
 .progress-bar-container {
   width: 100%;

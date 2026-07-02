@@ -234,14 +234,25 @@ export function setupUIControls(elements) {
   });
 
   // Fullscreen toggle
-  // iOS Safari doesn't support requestFullscreen() on arbitrary elements.
-  // Use video.webkitEnterFullscreen() which triggers the native iOS player fullscreen.
+  // iOS: webkitEnterFullscreen() hands control to the native iOS player which breaks
+  // the ManagedMediaSource pipeline (Shaka response filters stop working) on rotation.
+  // Instead use CSS pseudo-fullscreen that keeps the video element in our DOM tree.
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+  const ICON_EXPAND   = 'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z';
+  const ICON_COMPRESS = 'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z';
+
+  const setFullscreenIcon = (isInFullscreen) => {
+    const path = fullscreenBtn.querySelector('svg path');
+    if (path) path.setAttribute('d', isInFullscreen ? ICON_COMPRESS : ICON_EXPAND);
+  };
+
   const toggleFullscreen = () => {
     if (isIOS) {
-      if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+      const inFull = playerContainer.classList.toggle('ios-fullscreen');
+      document.body.style.overflow = inFull ? 'hidden' : '';
+      setFullscreenIcon(inFull);
       return;
     }
     if (!document.fullscreenElement) {
@@ -257,6 +268,10 @@ export function setupUIControls(elements) {
       if (exit) exit.call(document);
     }
   };
+
+  document.addEventListener('fullscreenchange', () => {
+    setFullscreenIcon(!!document.fullscreenElement);
+  });
 
   fullscreenBtn.addEventListener("click", (e) => {
     e.stopPropagation();
