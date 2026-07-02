@@ -176,11 +176,13 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
     //   that the native player handles internally and recovers from.
     const suppressFallback = () => !!video.webkitDisplayingFullscreen;
 
-    // Listen for player errors
+    // Listen for player errors — only fallback on CRITICAL severity (2).
+    // RECOVERABLE errors (network hiccups, segment retries) are handled internally by Shaka.
     shakaPlayer.addEventListener('error', (event) => {
         lastShakaErrorCode = event.detail.code;
-        console.error("Shaka error code", event.detail.code, "object", event.detail);
-        if (!suppressFallback()) {
+        console.error("Shaka error code", event.detail.code, "severity", event.detail.severity, "object", event.detail);
+        const isCritical = event.detail.severity === 2;
+        if (isCritical && !suppressFallback()) {
             triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
         }
     });

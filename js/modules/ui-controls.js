@@ -195,12 +195,15 @@ export function setupUIControls(elements) {
   video.addEventListener("play", schedulePlaybackUI);
   video.addEventListener("pause", schedulePlaybackUI);
 
-  // Seek on Timeline click/drag
+  // Seek on Timeline click/drag (mouse + touch)
+  const getSeekX = (event) =>
+    event.touches ? event.touches[0].clientX : event.clientX;
+
   const seek = (event) => {
     const activePlayer = shakaPlayer;
     if (!activePlayer || hasFallenBack) return;
     const rect = timelineContainer.getBoundingClientRect();
-    const clickX = event.clientX - rect.left;
+    const clickX = getSeekX(event) - rect.left;
     const percentage = Math.max(0, Math.min(1, clickX / rect.width));
 
     const seekRange = activePlayer.seekRange();
@@ -221,6 +224,19 @@ export function setupUIControls(elements) {
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
   });
+
+  timelineContainer.addEventListener("touchstart", (e) => {
+    if (hasFallenBack) return;
+    e.preventDefault();
+    seek(e);
+    const onTouchMove = (moveEvent) => { moveEvent.preventDefault(); seek(moveEvent); };
+    const onTouchEnd = () => {
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend", onTouchEnd);
+    };
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    document.addEventListener("touchend", onTouchEnd);
+  }, { passive: false });
 
   // Live Sync Button Click
   liveSyncBtn.addEventListener("click", (e) => {
