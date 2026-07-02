@@ -7,6 +7,14 @@ let prevAwayScore = null;
 let activeLookupPromise = null;
 let lookupTimer = null;
 
+// Throttling & DOM Caches
+let lastSummaryFetchTime = 0;
+let lastCachedMatchId = null;
+let cachedHomeEvents = [];
+let cachedAwayEvents = [];
+let lastStatsCache = "";
+let lastAgendaCache = "";
+
 /**
  * Updates the scoreboard match-timer badge with the exact value from the API
  * @param {string|null} timeText Time text from ESPN (e.g. "41'", "Entretiempo") or null to hide
@@ -73,155 +81,212 @@ export async function detectLiveMatch(urlTitle) {
     "esp.1",
     "eng.1",
   ];
+
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  
+  const pad = (n) => String(n).padStart(2, "0");
+  const getYYYYMMDD = (d) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
+  
+  const todayStr = getYYYYMMDD(today);
+  const tomorrowStr = getYYYYMMDD(tomorrow);
+  const datesParam = `dates=${todayStr}-${tomorrowStr}`;
+
+  let allPreviousMatches = [];
+  let allUpcomingMatches = [];
+
+  let activeLiveEvent = null;
+  let activeLeague = null;
+  let activeLeagueName = null;
+
   for (const league of leagues) {
     try {
       const res = await fetch(
-        `https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard?lang=es&region=ar`,
+        `https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard?lang=es&region=ar&${datesParam}`,
       );
       if (!res.ok) continue;
       const data = await res.json();
-
-      // Prioritize live matches ('in') first, then fall back to upcoming matches ('pre' starting in <= 30 mins)
       const events = data.events || [];
-      let liveEvent = events.find((ev) => ev.status?.type?.state === "in");
-      if (!liveEvent) {
-        const now = new Date();
-        liveEvent = events.find((ev) => {
-          if (ev.status?.type?.state === "pre") {
+
+      // Loop events to find live match and collect other ones
+      events.forEach((ev) => {
+        const state = ev.status?.type?.state;
+        
+        // Check for live match (prioritize 'in' first, then 'pre' starting in <= 30 mins)
+        if (!activeLiveEvent) {
+          if (state === "in") {
+            activeLiveEvent = ev;
+            activeLeague = league;
+            activeLeagueName = data.leagues?.[0]?.name || "";
+          } else if (state === "pre") {
+            const now = new Date();
             const matchDate = new Date(ev.date);
             const diffMinutes = (matchDate - now) / 60000;
-            return diffMinutes <= 30; // 30 minutes before kickoff
-          }
-          return false;
-        });
-      }
-
-      if (liveEvent) {
-        const comp = liveEvent.competitions[0];
-        const homeCompetitor = comp.competitors.find(
-          (c) => c.homeAway === "home",
-        );
-        const awayCompetitor = comp.competitors.find(
-          (c) => c.homeAway === "away",
-        );
-
-        const homeTeam = homeCompetitor?.team?.displayName;
-        const awayTeam = awayCompetitor?.team?.displayName;
-
-        const homeScore = homeCompetitor?.score ?? "0";
-        const awayScore = awayCompetitor?.score ?? "0";
-
-        const homeLogo = homeCompetitor?.team?.logo || "assets/logo.svg";
-        const awayLogo = awayCompetitor?.team?.logo || "assets/logo.svg";
-
-        const matchName =
-          homeTeam && awayTeam ? `${homeTeam} vs ${awayTeam}` : liveEvent.name;
-        const leagueName = data.leagues[0].name;
-        const matchDetail = liveEvent.status.type.detail;
-
-        updateMetadata(
-          matchName,
-          leagueName,
-          `Disfrutá el partido en vivo de la ${leagueName}.`,
-        );
-
-        // Update dynamic scoreboard widget
-        const scoreContainer = document.querySelector(
-          ".live-scoreboard-container",
-        );
-        const titleEl = document.querySelector(".signal-title");
-        if (scoreContainer && titleEl) {
-          titleEl.style.display = "block";
-          scoreContainer.style.display = "inline-flex";
-
-          const homeLogoEl = scoreContainer.querySelector(".home-logo");
-          const awayLogoEl = scoreContainer.querySelector(".away-logo");
-          if (homeLogoEl) homeLogoEl.src = homeLogo;
-          if (awayLogoEl) awayLogoEl.src = awayLogo;
-
-          const homeNameEl = scoreContainer.querySelector(".home-name");
-          const awayNameEl = scoreContainer.querySelector(".away-name");
-          if (homeNameEl) homeNameEl.textContent = homeTeam;
-          if (awayNameEl) awayNameEl.textContent = awayTeam;
-
-          const homeScoreEl = scoreContainer.querySelector(".home-score-val");
-          const awayScoreEl = scoreContainer.querySelector(".away-score-val");
-          if (homeScoreEl) homeScoreEl.textContent = homeScore;
-          if (awayScoreEl) awayScoreEl.textContent = awayScore;
-        }
-
-        // Check if a goal was scored (only after initial load has established a baseline)
-        const currentHomeInt = parseInt(homeScore, 10) || 0;
-        const currentAwayInt = parseInt(awayScore, 10) || 0;
-
-        if (prevHomeScore !== null && prevAwayScore !== null) {
-          if (
-            currentHomeInt > prevHomeScore ||
-            currentAwayInt > prevAwayScore
-          ) {
-            triggerGoalCelebration();
+            if (diffMinutes <= 30) {
+              activeLiveEvent = ev;
+              activeLeague = league;
+              activeLeagueName = data.leagues?.[0]?.name || "";
+            }
           }
         }
 
-        prevHomeScore = currentHomeInt;
-        prevAwayScore = currentAwayInt;
-
-        // Fetch detailed match summary for goals and cards only when the event changes
-        const homeId = homeCompetitor?.id;
-        const awayId = awayCompetitor?.id;
-
-        let homeEvents = [];
-        let awayEvents = [];
-
-        try {
-          const summaryRes = await fetch(
-            `https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/summary?event=${liveEvent.id}&lang=es&region=ar`,
-          );
-          if (summaryRes.ok) {
-            const summaryData = await summaryRes.json();
-            const keyEvents = summaryData.keyEvents || [];
-            keyEvents.forEach((ev) => {
-              const type = ev.type?.type || "";
-              if (type.includes("goal") || type.includes("card")) {
-                const isHome = ev.team?.id === homeId;
-                const item = {
-                  type: type.includes("goal")
-                    ? "goal"
-                    : type.includes("red")
-                      ? "red-card"
-                      : "yellow-card",
-                  time: ev.clock?.displayValue || "0'",
-                  player:
-                    ev.participants?.[0]?.athlete?.displayName ||
-                    ev.shortText?.split(" Gol")[0] ||
-                    "Jugador",
-                };
-                if (isHome) homeEvents.push(item);
-                else awayEvents.push(item);
-              }
-            });
-          }
-        } catch (err) {
-          console.warn("Failed to fetch detailed match summary:", err);
+        // Collect agenda data
+        if (state === "post") {
+          allPreviousMatches.push(ev);
+        } else if (state === "pre") {
+          allUpcomingMatches.push(ev);
         }
-
-        // Render stats UI
-        updateStatsUI(
-          homeEvents,
-          awayEvents,
-          homeLogo,
-          awayLogo,
-          homeTeam,
-          awayTeam,
-        );
-
-        // Update the timer badge with the exact API detail
-        updateTimerBadge(matchDetail);
-        return true;
-      }
+      });
     } catch (e) {
       console.warn(`ESPN API fetch failed for ${league}:`, e);
     }
+  }
+
+  // Filter out active live event from upcoming list
+  if (activeLiveEvent) {
+    allUpcomingMatches = allUpcomingMatches.filter((ev) => ev.id !== activeLiveEvent.id);
+  }
+
+  // Sort previous by date desc (most recent first) and upcoming by date asc (soonest first)
+  allPreviousMatches.sort((a, b) => new Date(b.date) - new Date(a.date));
+  allUpcomingMatches.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  // Render Agenda UI
+  updateAgendaUI(allPreviousMatches[0], allUpcomingMatches[0]);
+
+  // If a live match was found, process it
+  if (activeLiveEvent) {
+    const comp = activeLiveEvent.competitions[0];
+    const homeCompetitor = comp.competitors.find((c) => c.homeAway === "home");
+    const awayCompetitor = comp.competitors.find((c) => c.homeAway === "away");
+
+    const homeTeam = homeCompetitor?.team?.displayName;
+    const awayTeam = awayCompetitor?.team?.displayName;
+
+    const homeScore = homeCompetitor?.score ?? "0";
+    const awayScore = awayCompetitor?.score ?? "0";
+
+    const homeLogo = homeCompetitor?.team?.logo || "assets/logo.svg";
+    const awayLogo = awayCompetitor?.team?.logo || "assets/logo.svg";
+
+    const matchName = homeTeam && awayTeam ? `${homeTeam} vs ${awayTeam}` : activeLiveEvent.name;
+    const leagueName = activeLeagueName || "Copa Mundial";
+    const matchDetail = activeLiveEvent.status.type.detail;
+
+    updateMetadata(
+      matchName,
+      leagueName,
+      `Disfrutá el partido en vivo de la ${leagueName}.`,
+    );
+
+    // Update dynamic scoreboard widget
+    const scoreContainer = document.querySelector(".live-scoreboard-container");
+    const titleEl = document.querySelector(".signal-title");
+    if (scoreContainer && titleEl) {
+      titleEl.style.display = "block";
+      scoreContainer.style.display = "inline-flex";
+
+      const homeLogoEl = scoreContainer.querySelector(".home-logo");
+      const awayLogoEl = scoreContainer.querySelector(".away-logo");
+      if (homeLogoEl) homeLogoEl.src = homeLogo;
+      if (awayLogoEl) awayLogoEl.src = awayLogo;
+
+      const homeNameEl = scoreContainer.querySelector(".home-name");
+      const awayNameEl = scoreContainer.querySelector(".away-name");
+      if (homeNameEl) homeNameEl.textContent = homeTeam;
+      if (awayNameEl) awayNameEl.textContent = awayTeam;
+
+      const homeScoreEl = scoreContainer.querySelector(".home-score-val");
+      const awayScoreEl = scoreContainer.querySelector(".away-score-val");
+      if (homeScoreEl) homeScoreEl.textContent = homeScore;
+      if (awayScoreEl) awayScoreEl.textContent = awayScore;
+    }
+
+    // Check if a goal was scored (only after initial load has established a baseline)
+    const currentHomeInt = parseInt(homeScore, 10) || 0;
+    const currentAwayInt = parseInt(awayScore, 10) || 0;
+
+    if (prevHomeScore !== null && prevAwayScore !== null) {
+      if (currentHomeInt > prevHomeScore || currentAwayInt > prevAwayScore) {
+        triggerGoalCelebration();
+      }
+    }
+
+    prevHomeScore = currentHomeInt;
+    prevAwayScore = currentAwayInt;
+
+    // Fetch detailed match summary for goals and cards (throttled to once every 30s)
+    const homeId = homeCompetitor?.id;
+    const awayId = awayCompetitor?.id;
+
+    // Reset summary cache if match ID changed
+    if (activeLiveEvent.id !== lastCachedMatchId) {
+      lastCachedMatchId = activeLiveEvent.id;
+      lastSummaryFetchTime = 0;
+      cachedHomeEvents = [];
+      cachedAwayEvents = [];
+    }
+
+    const nowTime = Date.now();
+    if (
+      nowTime - lastSummaryFetchTime >= 30000 ||
+      (cachedHomeEvents.length === 0 && cachedAwayEvents.length === 0)
+    ) {
+      try {
+        const summaryRes = await fetch(
+          `https://site.api.espn.com/apis/site/v2/sports/soccer/${activeLeague}/summary?event=${activeLiveEvent.id}&lang=es&region=ar`,
+        );
+        if (summaryRes.ok) {
+          const summaryData = await summaryRes.json();
+          const keyEvents = summaryData.keyEvents || [];
+          
+          let fetchedHome = [];
+          let fetchedAway = [];
+
+          keyEvents.forEach((ev) => {
+            const type = ev.type?.type || "";
+            if (type.includes("goal") || type.includes("card")) {
+              const isHome = ev.team?.id === homeId;
+              const item = {
+                type: type.includes("goal")
+                  ? "goal"
+                  : type.includes("red")
+                    ? "red-card"
+                    : "yellow-card",
+                time: ev.clock?.displayValue || "0'",
+                player:
+                  ev.participants?.[0]?.athlete?.displayName ||
+                  ev.shortText?.split(" Gol")[0] ||
+                  "Jugador",
+              };
+              if (isHome) fetchedHome.push(item);
+              else fetchedAway.push(item);
+            }
+          });
+
+          cachedHomeEvents = fetchedHome;
+          cachedAwayEvents = fetchedAway;
+          lastSummaryFetchTime = nowTime;
+        }
+      } catch (err) {
+        console.warn("Failed to fetch detailed match summary:", err);
+      }
+    }
+
+    // Render stats UI using cached or newly fetched events
+    updateStatsUI(
+      cachedHomeEvents,
+      cachedAwayEvents,
+      homeLogo,
+      awayLogo,
+      homeTeam,
+      awayTeam,
+    );
+
+    // Update the timer badge with the exact API detail
+    updateTimerBadge(matchDetail);
+    return true;
   }
 
   // Hide the scoreboard container if no live match was found
@@ -336,6 +401,10 @@ function updateStatsUI(
   const statsContainer = document.querySelector(".match-stats-container");
   if (!statsContainer) return;
 
+  const statsKey = JSON.stringify({ homeEvents, awayEvents, homeLogo, awayLogo, homeTeam, awayTeam });
+  if (statsKey === lastStatsCache) return;
+  lastStatsCache = statsKey;
+
   // Update team logos and names in headers
   const homeLogoEl = statsContainer.querySelector(".home-stats-logo");
   const awayLogoEl = statsContainer.querySelector(".away-stats-logo");
@@ -404,4 +473,90 @@ function updateStatsUI(
   renderList(awayEvents, awayListEl);
 
   statsContainer.style.display = "flex";
+}
+
+/**
+ * Renders the previous and upcoming match in the .matches-agenda-container
+ */
+function updateAgendaUI(prevMatch, nextMatch) {
+  const container = document.querySelector(".matches-agenda-container");
+  if (!container) return;
+
+  const agendaKey = JSON.stringify({
+    prevId: prevMatch?.id,
+    prevScore: prevMatch?.competitions?.[0]?.competitors?.map((c) => c.score).join(","),
+    nextId: nextMatch?.id,
+    nextDate: nextMatch?.date,
+  });
+  if (agendaKey === lastAgendaCache) return;
+  lastAgendaCache = agendaKey;
+
+  const logoFallback = "assets/logo.svg";
+
+  // 1. Render Previous Match
+  const prevCard = container.querySelector(".prev-match-card");
+  if (prevMatch && prevCard) {
+    const comp = prevMatch.competitions?.[0];
+    const home = comp?.competitors.find((c) => c.homeAway === "home");
+    const away = comp?.competitors.find((c) => c.homeAway === "away");
+
+    const homeLogo = prevCard.querySelector(".prev-home-logo");
+    const homeName = prevCard.querySelector(".prev-home-name");
+    const homeScore = prevCard.querySelector(".prev-home-score");
+    const awayLogo = prevCard.querySelector(".prev-away-logo");
+    const awayName = prevCard.querySelector(".prev-away-name");
+    const awayScore = prevCard.querySelector(".prev-away-score");
+
+    if (homeLogo) homeLogo.src = home?.team?.logo || logoFallback;
+    if (homeName) homeName.textContent = home?.team?.displayName || "-";
+    if (homeScore) homeScore.textContent = home?.score ?? "-";
+    if (awayLogo) awayLogo.src = away?.team?.logo || logoFallback;
+    if (awayName) awayName.textContent = away?.team?.displayName || "-";
+    if (awayScore) awayScore.textContent = away?.score ?? "-";
+    prevCard.style.display = "flex";
+  } else if (prevCard) {
+    prevCard.style.display = "none";
+  }
+
+  // 2. Render Next Match
+  const nextCard = container.querySelector(".next-match-card");
+  if (nextMatch && nextCard) {
+    const comp = nextMatch.competitions?.[0];
+    const home = comp?.competitors.find((c) => c.homeAway === "home");
+    const away = comp?.competitors.find((c) => c.homeAway === "away");
+
+    const homeLogo = nextCard.querySelector(".next-home-logo");
+    const homeName = nextCard.querySelector(".next-home-name");
+    const awayLogo = nextCard.querySelector(".next-away-logo");
+    const awayName = nextCard.querySelector(".next-away-name");
+    const timeVal = nextCard.querySelector(".agenda-time-val");
+
+    if (homeLogo) homeLogo.src = home?.team?.logo || logoFallback;
+    if (homeName) homeName.textContent = home?.team?.displayName || "-";
+    if (awayLogo) awayLogo.src = away?.team?.logo || logoFallback;
+    if (awayName) awayName.textContent = away?.team?.displayName || "-";
+
+    if (timeVal) {
+      const matchDate = new Date(nextMatch.date);
+      const isToday = matchDate.toDateString() === new Date().toDateString();
+      const timeString =
+        matchDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) + " hs";
+      const dayString = isToday
+        ? ""
+        : matchDate.toLocaleDateString([], { day: "numeric", month: "short" }) + " • ";
+      timeVal.textContent = `${dayString}${timeString}`;
+    }
+    nextCard.style.display = "flex";
+  } else if (nextCard) {
+    nextCard.style.display = "none";
+  }
+
+  // Handle divider visibility
+  const divider = container.querySelector(".agenda-divider");
+  if (divider) {
+    divider.style.display = prevMatch && nextMatch ? "block" : "none";
+  }
+
+  // If absolutely no matches are scheduled/finished, hide the whole container
+  container.style.display = prevMatch || nextMatch ? "flex" : "none";
 }

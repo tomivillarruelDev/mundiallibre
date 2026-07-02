@@ -62,7 +62,7 @@
       rel="stylesheet" />
 
     <!-- CSS Stylesheet -->
-    <link rel="stylesheet" href="css/style.css?v=53" />
+    <link rel="stylesheet" href="css/style.css?v=60" />
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg" href="assets/favicon.svg" />
@@ -432,7 +432,51 @@
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
               </svg>
               Low Latency
-            </span>
+          </div>
+
+          <!-- Matches Agenda (Previous & Next Match) Section -->
+          <div class="matches-agenda-container" style="display: none;">
+            <!-- Left Side: Previous Match -->
+            <div class="agenda-card prev-match-card">
+              <div class="agenda-card-title">PARTIDO ANTERIOR</div>
+              <div class="agenda-card-content">
+                <div class="agenda-team home-agenda">
+                  <img class="agenda-logo prev-home-logo" src="assets/logo.svg" alt="" />
+                  <span class="agenda-name prev-home-name">-</span>
+                </div>
+                <div class="agenda-score-box">
+                  <span class="agenda-score prev-home-score">-</span>
+                  <span class="agenda-score-divider">:</span>
+                  <span class="agenda-score prev-away-score">-</span>
+                </div>
+                <div class="agenda-team away-agenda">
+                  <span class="agenda-name prev-away-name">-</span>
+                  <img class="agenda-logo prev-away-logo" src="assets/logo.svg" alt="" />
+                </div>
+              </div>
+              <div class="agenda-card-status">Finalizado</div>
+            </div>
+
+            <div class="agenda-divider"></div>
+
+            <!-- Right Side: Next Match -->
+            <div class="agenda-card next-match-card">
+              <div class="agenda-card-title">PRÓXIMO PARTIDO</div>
+              <div class="agenda-card-content">
+                <div class="agenda-team home-agenda">
+                  <img class="agenda-logo next-home-logo" src="assets/logo.svg" alt="" />
+                  <span class="agenda-name next-home-name">-</span>
+                </div>
+                <div class="agenda-time-box">
+                  <span class="agenda-time-val">-</span>
+                </div>
+                <div class="agenda-team away-agenda">
+                  <span class="agenda-name next-away-name">-</span>
+                  <img class="agenda-logo next-away-logo" src="assets/logo.svg" alt="" />
+                </div>
+              </div>
+              <div class="agenda-card-status next-match-status">Programado</div>
+            </div>
           </div>
         </div>
       </main>

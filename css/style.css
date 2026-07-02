@@ -923,34 +923,7 @@ body {
   }
 }
 
-/* 1. Importamos Poppins desde Google Fonts para tener la geometría exacta */
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@800;900&display=swap");
 
-/* Contenedor principal del texto del logo */
-.brand-logo-text {
-  font-family: "Poppins", sans-serif;
-  font-weight: 900; /* Usamos el peso más grueso disponible */
-  font-size: 2.8rem;
-  color: #2d3277; /* Azul oscuro exacto corporativo */
-  text-transform: lowercase; /* Forzar minúsculas */
-
-  /* EL TRUCO CLAVE: Ajuste de tracking (interletrado) muy ajustado */
-  letter-spacing: -0.05em;
-
-  /* Suavizado de fuentes para que se vea como un vector limpio */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  display: inline-flex;
-  align-items: center;
-  line-height: 0.9;
-}
-
-/* Estilo específico para "libre" */
-.brand-logo-text .highlight {
-  color: #009ee3; /* Azul brillante de Mercado Libre */
-  font-weight: 900;
-}
 
 /* ==========================================
    GOAL CELEBRATION EFFECT OVERLAY
@@ -971,7 +944,7 @@ body {
 }
 
 .goal-text-glow {
-  font-family: "Poppins", var(--font-display);
+  font-family: var(--font-display);
   font-size: clamp(48px, 10vw, 110px);
   font-weight: 900;
   color: var(--color-accent-yellow); /* Glow yellow theme matching brand */
@@ -1082,4 +1055,167 @@ body {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+/* ==========================================
+   MATCHES AGENDA SECTION (Partido Anterior / Próximo)
+   ========================================== */
+.matches-agenda-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 24px;
+  margin-top: 24px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  animation: fadeIn 0.4s ease;
+}
+
+.agenda-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.prev-match-card {
+  opacity: 0.65;
+  transition: opacity var(--transition-fast);
+}
+
+.prev-match-card:hover {
+  opacity: 0.9;
+}
+
+.agenda-card-title {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.agenda-card-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.agenda-team {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 40%;
+}
+
+.home-agenda {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.away-agenda {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.agenda-logo {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.agenda-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agenda-score-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-family: monospace;
+  font-weight: 700;
+}
+
+.agenda-score {
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.agenda-score-divider {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.agenda-time-box {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.agenda-card-status {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.next-match-status {
+  background: rgba(0, 158, 227, 0.15);
+  color: #009ee3;
+}
+
+.agenda-divider {
+  width: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  align-self: stretch;
+}
+
+/* Mobile query for agenda */
+@media (max-width: 600px) {
+  .matches-agenda-container {
+    flex-direction: column;
+    gap: 20px;
+    padding: 16px;
+  }
+  .agenda-divider {
+    width: 100%;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .agenda-team {
+    width: 35%;
+  }
+  .agenda-name {
+    font-size: 12px;
+  }
 }
