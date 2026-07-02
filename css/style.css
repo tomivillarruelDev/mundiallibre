@@ -922,6 +922,10 @@ body {
     width: 35%;
   }
 
+  .scoreboard-team:last-of-type {
+    flex-direction: column-reverse;
+  }
+
   .team-name {
     font-size: 13px !important;
     font-weight: 700;
