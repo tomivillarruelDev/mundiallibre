@@ -283,6 +283,35 @@
           </div>
         </div>
 
+        <!-- DEBUG LOG (temporal — iOS diagnosis) -->
+        <div id="ios-dbg-wrap" style="display:none;margin:8px 0;border:1px solid #0f0;border-radius:6px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#0f0;padding:4px 8px">
+            <span style="color:#000;font:bold 11px monospace">DEBUG LOG</span>
+            <button id="ios-dbg-copy" style="background:#000;color:#0f0;border:1px solid #0f0;border-radius:4px;padding:4px 12px;font:bold 12px monospace;cursor:pointer">COPIAR</button>
+          </div>
+          <textarea id="ios-dbg" readonly style="display:block;width:100%;box-sizing:border-box;height:220px;margin:0;padding:6px;background:#0a0a0a;color:#0f0;font:11px monospace;border:none;resize:vertical"></textarea>
+        </div>
+        <script>
+          (function() {
+            var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            if (!isIOS) return;
+            var wrap = document.getElementById('ios-dbg-wrap');
+            var dbg  = document.getElementById('ios-dbg');
+            var btn  = document.getElementById('ios-dbg-copy');
+            wrap.style.display = 'block';
+            btn.addEventListener('click', function() {
+              navigator.clipboard.writeText(dbg.value).catch(function() { dbg.select(); document.execCommand('copy'); });
+            });
+            window.addEventListener('message', function(e) {
+              if (e.data && e.data.type === 'player-frame-log') {
+                dbg.value += e.data.msg + '\n';
+                if (dbg.value.length > 10000) dbg.value = dbg.value.slice(-8000);
+                dbg.scrollTop = dbg.scrollHeight;
+              }
+            });
+          })();
+        </script>
+
         <!-- Signal description details -->
         <div class="signal-details animate-details">
           <p
