@@ -114,12 +114,15 @@
           setTimeout(() => { if (!reloadInProgress) { log('[shaka] retryStreaming'); player.retryStreaming(); } }, 500);
         });
 
+        reloadInProgress = true;
         log('[start] load()...');
         await player.load(manifest);
+        reloadInProgress = false;
         log('[start] load ok rs=' + video.readyState);
         video.play().catch(e => log('[start] play bloqueado: ' + e));
 
       } catch (e) {
+        reloadInProgress = false;
         sendError(String(e));
       }
     }
