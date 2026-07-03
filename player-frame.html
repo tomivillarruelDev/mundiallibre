@@ -7,16 +7,16 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
     video { width: 100%; height: calc(100% - 160px); object-fit: contain; display: block; }
-    #dbg-wrap { position: relative; height: 160px; background: #0a0a0a; border-top: 1px solid #0f0; }
-    #dbg { width: 100%; height: 120px; background: #0a0a0a; color: #0f0; font: 10px monospace; border: none; padding: 4px; resize: none; }
-    #dbg-copy { width: 100%; height: 40px; background: #000; color: #0f0; border: 1px solid #0f0; font: bold 12px monospace; cursor: pointer; }
+    #dbg-wrap { height: 160px; background: #0a0a0a; border-top: 1px solid #0f0; }
+    #dbg { width: 100%; height: 120px; background: #0a0a0a; color: #0f0; font: 10px monospace; border: none; padding: 4px; resize: none; display: block; }
+    #dbg-copy { width: 100%; height: 40px; background: #000; color: #0f0; border: 1px solid #0f0; font: bold 12px monospace; cursor: pointer; display: block; }
   </style>
 </head>
 <body>
   <video id="v" playsinline controls></video>
   <div id="dbg-wrap">
     <textarea id="dbg" readonly></textarea>
-    <button id="dbg-copy">📋 COPIAR LOG</button>
+    <button id="dbg-copy">COPIAR LOG</button>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/shaka-player@5.0.5/dist/shaka-player.compiled.min.js"></script>
@@ -24,126 +24,133 @@
     import { createIOSDecryptor } from './js/modules/ios-cenc-decryptor.js';
 
     const video = document.getElementById('v');
-    const dbg = document.getElementById('dbg');
-    const ts = () => new Date().toISOString().slice(11, 22);
-    const log = (m) => {
+    const dbg   = document.getElementById('dbg');
+    const ts    = () => new Date().toISOString().slice(11, 22);
+    const log   = (m) => {
       dbg.value += ts() + ' ' + m + '\n';
-      if (dbg.value.length > 6000) dbg.value = dbg.value.slice(-5000);
+      if (dbg.value.length > 8000) dbg.value = dbg.value.slice(-6000);
       dbg.scrollTop = dbg.scrollHeight;
     };
     document.getElementById('dbg-copy').addEventListener('click', () => {
       navigator.clipboard.writeText(dbg.value).catch(() => { dbg.select(); document.execCommand('copy'); });
     });
 
+    // Video events
     ['play','pause','playing','ended','stalled','waiting','suspend','emptied','canplay','loadedmetadata'].forEach(ev =>
       video.addEventListener(ev, () => log('[video] ' + ev + ' rs=' + video.readyState + ' paused=' + video.paused))
     );
-    video.addEventListener('error', () => log('[video.error] code=' + (video.error?.code)));
-    document.addEventListener('visibilitychange', () => log('[visibility] ' + document.visibilityState));
+    video.addEventListener('error', () => log('[video.error] code=' + video.error?.code));
+    document.addEventListener('visibilitychange', () => log('[vis] ' + document.visibilityState));
 
-    let player = null;
-    let manifest = null;
+    let player          = null;
+    let manifest        = null;
     let reloadInProgress = false;
-    let reloadAttempts = 0;
+    let reloadAttempts  = 0;
 
-    video.addEventListener('playing', () => { reloadAttempts = 0; });
+    const sendError = (reason) => {
+      log('[ERROR] ' + reason + ' — fallback en 15s');
+      setTimeout(() => window.parent.postMessage({ type: 'player-frame-error' }, '*'), 15000);
+    };
 
+    // Reload after MMS destruction
     video.addEventListener('emptied', () => {
       if (reloadInProgress || !player || !manifest) return;
-      if (reloadAttempts >= 5) {
-        window.parent.postMessage({ type: 'player-frame-error' }, '*');
-        return;
-      }
-      // Cancel any pending autoplay play() — calling play() on rs=0 triggers MEDIA_ERR_DECODE
-      video.pause();
+      if (reloadAttempts >= 5) { sendError('max reloads'); return; }
+      video.pause(); // cancel any pending autoplay play() on rs=0
       reloadInProgress = true;
       reloadAttempts++;
       log('[reload] emptied #' + reloadAttempts);
 
-      const doReload = async () => {
+      (async () => {
         if (video.readyState >= 3) { reloadInProgress = false; return; }
         try {
           log('[reload] load()...');
           await player.load(manifest);
-          log('[reload] load() ok rs=' + video.readyState);
+          log('[reload] ok rs=' + video.readyState);
           if (video.readyState >= 3) {
             video.play().catch(() => {});
           } else {
-            video.addEventListener('canplay', () => { log('[reload] canplay → play'); video.play().catch(() => {}); }, { once: true });
+            video.addEventListener('canplay', () => { log('[reload] canplay→play'); video.play().catch(() => {}); }, { once: true });
           }
         } catch (e) {
           log('[reload] FAILED ' + e);
-          if (reloadAttempts < 5) {
-            reloadAttempts++;
-            setTimeout(doReload, 500);
-            return;
-          }
-          window.parent.postMessage({ type: 'player-frame-error' }, '*');
+          sendError('reload falló: ' + e);
         } finally {
           reloadInProgress = false;
         }
-      };
-
-      doReload();
+      })();
     });
 
     async function startPlayer(cfg) {
-      manifest = cfg.manifest;
-
-      shaka.polyfill.installAll();
-      if (window.ManagedMediaSource) video.disableRemotePlayback = true;
-
-      player = new shaka.Player(video);
-      const decryptor = await createIOSDecryptor(cfg.key);
-      const net = player.getNetworkingEngine();
-
-      net.registerResponseFilter((type, response) => {
-        if (type !== shaka.net.NetworkingEngine.RequestType.MANIFEST) return;
-        const xml = new TextDecoder().decode(new Uint8Array(response.data));
-        response.data = new TextEncoder().encode(
-          xml.replace(/<ContentProtection\b[^>]*\/>/g, '')
-             .replace(/<ContentProtection\b[\s\S]*?<\/ContentProtection>/g, '')
-        ).buffer;
-      });
-
-      net.registerResponseFilter(async (type, response) => {
-        if (type !== shaka.net.NetworkingEngine.RequestType.SEGMENT) return;
-        const bytes = new Uint8Array(response.data);
-        const box = bytes.length >= 8
-          ? String.fromCharCode(bytes[4], bytes[5], bytes[6], bytes[7]) : '';
-        if (box === 'ftyp' || box === 'moov') {
-          response.data = decryptor.transformInit(response.data);
-        } else {
-          response.data = await decryptor.decryptMedia(response.data);
-        }
-      });
-
-      player.configure({
-        manifest: { dash: { clockSyncUri: '' } },
-        streaming: { bufferingGoal: 20, rebufferingGoal: 10, lowLatencyMode: false }
-      });
-
-      player.addEventListener('error', (event) => {
-        log('[shaka] code=' + event.detail.code + ' sev=' + event.detail.severity + ' reload=' + reloadInProgress);
-        if (event.detail.severity !== 2 || reloadInProgress) return;
-        setTimeout(() => {
-          if (!reloadInProgress) { log('[shaka] retryStreaming'); player.retryStreaming(); }
-        }, 500);
-      });
-
       try {
+        manifest = cfg.manifest;
+        log('[start] manifest=' + manifest.slice(0, 60));
+        log('[start] shaka=' + (typeof shaka !== 'undefined' ? 'ok' : 'NO CARGADO'));
+
+        shaka.polyfill.installAll();
+        if (window.ManagedMediaSource) { video.disableRemotePlayback = true; log('[start] MMS ok'); }
+
+        player = new shaka.Player(video);
+        log('[start] player creado');
+
+        const decryptor = await createIOSDecryptor(cfg.key);
+        log('[start] decryptor ok');
+
+        const net = player.getNetworkingEngine();
+
+        net.registerResponseFilter((type, response) => {
+          if (type !== shaka.net.NetworkingEngine.RequestType.MANIFEST) return;
+          const xml = new TextDecoder().decode(new Uint8Array(response.data));
+          response.data = new TextEncoder().encode(
+            xml.replace(/<ContentProtection\b[^>]*\/>/g, '')
+               .replace(/<ContentProtection\b[\s\S]*?<\/ContentProtection>/g, '')
+          ).buffer;
+        });
+
+        net.registerResponseFilter(async (type, response) => {
+          if (type !== shaka.net.NetworkingEngine.RequestType.SEGMENT) return;
+          const bytes = new Uint8Array(response.data);
+          const box = bytes.length >= 8 ? String.fromCharCode(bytes[4], bytes[5], bytes[6], bytes[7]) : '';
+          if (box === 'ftyp' || box === 'moov') {
+            response.data = decryptor.transformInit(response.data);
+          } else {
+            response.data = await decryptor.decryptMedia(response.data);
+          }
+        });
+
+        player.configure({
+          manifest: { dash: { clockSyncUri: '' } },
+          streaming: { bufferingGoal: 20, rebufferingGoal: 10, lowLatencyMode: false }
+        });
+
+        player.addEventListener('error', (event) => {
+          log('[shaka] code=' + event.detail.code + ' sev=' + event.detail.severity);
+          if (event.detail.severity !== 2 || reloadInProgress) return;
+          setTimeout(() => { if (!reloadInProgress) { log('[shaka] retryStreaming'); player.retryStreaming(); } }, 500);
+        });
+
+        log('[start] llamando load()...');
         await player.load(manifest);
-        video.play().catch(() => {});
+        log('[start] load ok rs=' + video.readyState);
+        video.play().catch(e => log('[start] play bloqueado: ' + e));
+
       } catch (e) {
-        window.parent.postMessage({ type: 'player-frame-error' }, '*');
+        sendError(String(e));
       }
     }
 
+    video.addEventListener('playing', () => { reloadAttempts = 0; });
+
     window.addEventListener('message', ({ data }) => {
-      if (data?.type === 'player-frame-init') startPlayer(data.config);
+      if (data?.type === 'player-frame-init') {
+        log('[frame] config recibida');
+        startPlayer(data.config);
+      }
     });
 
+    log('[frame] ready → padre');
     window.parent.postMessage({ type: 'player-frame-ready' }, '*');
+    setTimeout(() => { if (!manifest) log('[frame] WARN: sin config tras 3s'); }, 3000);
   </script>
 </body>
 </html>
