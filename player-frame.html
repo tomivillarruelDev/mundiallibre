@@ -6,17 +6,41 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
-    video { width: 100%; height: 100%; object-fit: contain; display: block; }
+    video { width: 100%; height: calc(100% - 160px); object-fit: contain; display: block; }
+    #dbg-wrap { position: relative; height: 160px; background: #0a0a0a; border-top: 1px solid #0f0; }
+    #dbg { width: 100%; height: 120px; background: #0a0a0a; color: #0f0; font: 10px monospace; border: none; padding: 4px; resize: none; }
+    #dbg-copy { width: 100%; height: 40px; background: #000; color: #0f0; border: 1px solid #0f0; font: bold 12px monospace; cursor: pointer; }
   </style>
 </head>
 <body>
   <video id="v" playsinline autoplay controls></video>
+  <div id="dbg-wrap">
+    <textarea id="dbg" readonly></textarea>
+    <button id="dbg-copy">📋 COPIAR LOG</button>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/shaka-player@5.0.5/dist/shaka-player.compiled.min.js"></script>
   <script type="module">
     import { createIOSDecryptor } from './js/modules/ios-cenc-decryptor.js';
 
     const video = document.getElementById('v');
+    const dbg = document.getElementById('dbg');
+    const ts = () => new Date().toISOString().slice(11, 22);
+    const log = (m) => {
+      dbg.value += ts() + ' ' + m + '\n';
+      if (dbg.value.length > 6000) dbg.value = dbg.value.slice(-5000);
+      dbg.scrollTop = dbg.scrollHeight;
+    };
+    document.getElementById('dbg-copy').addEventListener('click', () => {
+      navigator.clipboard.writeText(dbg.value).catch(() => { dbg.select(); document.execCommand('copy'); });
+    });
+
+    ['play','pause','playing','ended','stalled','waiting','suspend','emptied','canplay','loadedmetadata'].forEach(ev =>
+      video.addEventListener(ev, () => log('[video] ' + ev + ' rs=' + video.readyState + ' paused=' + video.paused))
+    );
+    video.addEventListener('error', () => log('[video.error] code=' + (video.error?.code)));
+    document.addEventListener('visibilitychange', () => log('[visibility] ' + document.visibilityState));
+
     let player = null;
     let manifest = null;
     let reloadInProgress = false;
@@ -32,17 +56,21 @@
       }
       reloadInProgress = true;
       reloadAttempts++;
+      log('[reload] emptied #' + reloadAttempts);
 
       const doReload = async () => {
         if (video.readyState >= 3) { reloadInProgress = false; return; }
         try {
+          log('[reload] load()...');
           await player.load(manifest);
+          log('[reload] load() ok rs=' + video.readyState);
           if (video.readyState >= 3) {
             video.play().catch(() => {});
           } else {
-            video.addEventListener('canplay', () => { video.play().catch(() => {}); }, { once: true });
+            video.addEventListener('canplay', () => { log('[reload] canplay → play'); video.play().catch(() => {}); }, { once: true });
           }
         } catch (e) {
+          log('[reload] FAILED ' + e);
           if (reloadAttempts < 5) {
             reloadAttempts++;
             setTimeout(doReload, 500);
@@ -94,9 +122,10 @@
       });
 
       player.addEventListener('error', (event) => {
+        log('[shaka] code=' + event.detail.code + ' sev=' + event.detail.severity + ' reload=' + reloadInProgress);
         if (event.detail.severity !== 2 || reloadInProgress) return;
         setTimeout(() => {
-          if (!reloadInProgress) player.retryStreaming();
+          if (!reloadInProgress) { log('[shaka] retryStreaming'); player.retryStreaming(); }
         }, 500);
       });
 
