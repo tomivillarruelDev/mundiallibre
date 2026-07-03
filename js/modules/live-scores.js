@@ -1,6 +1,6 @@
 /* live-scores.js - Dynamic metadata loading and ESPN score API tracker */
 
-import { triggerGoalCelebration } from "./animations.js?v=107";
+import { triggerGoalCelebration } from "./animations.js?v=111";
 
 let prevHomeScore = null;
 let prevAwayScore = null;
@@ -240,10 +240,19 @@ export async function detectLiveMatch(urlTitle) {
       if (homeNameEl) homeNameEl.textContent = homeTeam;
       if (awayNameEl) awayNameEl.textContent = awayTeam;
 
+      const homeShootVal = homeCompetitor?.shootoutScore;
+      const awayShootVal = awayCompetitor?.shootoutScore;
+      const homeScoreText = (homeShootVal !== undefined && homeShootVal !== null)
+        ? `${homeScore} (${homeShootVal})`
+        : homeScore;
+      const awayScoreText = (awayShootVal !== undefined && awayShootVal !== null)
+        ? `${awayScore} (${awayShootVal})`
+        : awayScore;
+
       const homeScoreEl = scoreContainer.querySelector(".home-score-val");
       const awayScoreEl = scoreContainer.querySelector(".away-score-val");
-      if (homeScoreEl) homeScoreEl.textContent = homeScore;
-      if (awayScoreEl) awayScoreEl.textContent = awayScore;
+      if (homeScoreEl) homeScoreEl.textContent = homeScoreText;
+      if (awayScoreEl) awayScoreEl.textContent = awayScoreText;
     }
 
     // Check if a goal was scored (only after initial load has established a baseline)
@@ -292,20 +301,30 @@ export async function detectLiveMatch(urlTitle) {
           let homeShootout = [];
           let awayShootout = [];
 
+          // 1. Parse Shootout Kicks from the dedicated shootout key
+          if (summaryData.shootout && Array.isArray(summaryData.shootout)) {
+            summaryData.shootout.forEach((teamShootout) => {
+              const isHome = String(teamShootout.id) === String(homeId);
+              const shots = teamShootout.shots || [];
+              const results = shots.map((s) => s.didScore === true);
+              if (isHome) {
+                homeShootout = results;
+              } else {
+                awayShootout = results;
+              }
+            });
+          }
+
+          // 2. Parse Key Events (Goals and Cards)
           keyEvents.forEach((ev) => {
             const type = ev.type?.type || "";
             const isShootout = ev.shootout === true;
 
-            if (isShootout) {
-              const isHome = ev.team?.id === homeId;
-              const scored =
-                type.includes("goal") ||
-                ev.text?.toLowerCase().includes("gol") ||
-                ev.text?.toLowerCase().includes("convierte");
-              if (isHome) homeShootout.push(scored);
-              else awayShootout.push(scored);
-            } else if (type.includes("goal") || type.includes("card") || (type.includes("penalty") && type.includes("scored"))) {
-              const isHome = ev.team?.id === homeId;
+            // Skip shootout kicks in keyEvents to avoid double-processing
+            if (isShootout) return;
+
+            if (type.includes("goal") || type.includes("card") || (type.includes("penalty") && type.includes("scored"))) {
+              const isHome = String(ev.team?.id) === String(homeId);
               const item = {
                 type: (type.includes("goal") || type.includes("penalty"))
                   ? "goal"
@@ -630,12 +649,21 @@ function updateAgendaUI(prevMatch, nextMatch) {
     const awayName = prevCard.querySelector(".prev-away-name");
     const awayScore = prevCard.querySelector(".prev-away-score");
 
-    if (homeLogo) homeLogo.src = home?.team?.logo || logoFallback;
-    if (homeName) homeName.textContent = home?.team?.displayName || "-";
-    if (homeScore) homeScore.textContent = home?.score ?? "-";
-    if (awayLogo) awayLogo.src = away?.team?.logo || logoFallback;
-    if (awayName) awayName.textContent = away?.team?.displayName || "-";
-    if (awayScore) awayScore.textContent = away?.score ?? "-";
+     const homeShootVal = home?.shootoutScore;
+     const awayShootVal = away?.shootoutScore;
+     const homeScoreText = (homeShootVal !== undefined && homeShootVal !== null)
+       ? `${home?.score ?? "-"} (${homeShootVal})`
+       : home?.score ?? "-";
+     const awayScoreText = (awayShootVal !== undefined && awayShootVal !== null)
+       ? `${away?.score ?? "-"} (${awayShootVal})`
+       : away?.score ?? "-";
+
+     if (homeLogo) homeLogo.src = home?.team?.logo || logoFallback;
+     if (homeName) homeName.textContent = home?.team?.displayName || "-";
+     if (homeScore) homeScore.textContent = homeScoreText;
+     if (awayLogo) awayLogo.src = away?.team?.logo || logoFallback;
+     if (awayName) awayName.textContent = away?.team?.displayName || "-";
+     if (awayScore) awayScore.textContent = awayScoreText;
     prevCard.style.display = "flex";
   } else if (prevCard) {
     prevCard.style.display = "none";
