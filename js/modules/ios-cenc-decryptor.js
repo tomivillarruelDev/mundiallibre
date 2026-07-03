@@ -163,62 +163,76 @@ export async function decryptMediaSegment(data, cryptoKey) {
     // Log segment summary: whether subsamples are used, sample count, first sample subsample count
     const firstSub = samples[0];
     const hasSub = firstSub && firstSub.subsamples != null;
-    _log('[dec] seg sz=' + src.length + ' samples=' + samples.length
-        + ' sub=' + hasSub + (firstSub && firstSub.subsamples ? ' sub[0]cnt=' + firstSub.subsamples.length : '')
-        + ' trun=' + trunSizes.length + ' tfhdSz=' + tfhdDefaultSize);
-
     const mdatStart = mdatBox.pos + 8;
+
+    // ── Fase 1: recopilar todas las tareas de decrypt (sin awaits) ─────────────
+    // Para cada sub-muestra encriptada, calculamos counter y offset de forma
+    // sincrónica. Luego lanzamos todos los decrypts en paralelo con Promise.all.
+    // Esto elimina los 1000+ awaits secuenciales que bloqueaban el buffer ~1.5s/segmento.
+    const tasks = [];
     let mdatOffset = 0;
 
-    try {
-        for (let si = 0; si < samples.length; si++) {
-            const { iv, subsamples } = samples[si];
+    for (let si = 0; si < samples.length; si++) {
+        const { iv, subsamples } = samples[si];
 
-            if (subsamples && subsamples.length > 0) {
-                // Subsample encryption (typical for H.264 video):
-                // clear NAL header bytes are skipped; encrypted NAL body bytes are decrypted.
-                // AES-CTR block counter is NOT reset between subsamples of the same sample.
-                let blockCount = BigInt(0);
-                let sampleByteOffset = 0;
+        if (subsamples && subsamples.length > 0) {
+            // Sub-muestra encriptada (video H.264): headers NAL claros + payload encriptado.
+            // El contador AES-CTR NO se reinicia entre sub-muestras del mismo sample.
+            let blockCount = BigInt(0);
+            let sampleByteOffset = 0;
 
-                for (const { clearBytes, encBytes } of subsamples) {
-                    sampleByteOffset += clearBytes;
-
-                    if (encBytes > 0) {
-                        const counter = buildCTRCounter(iv, blockCount);
-                        const slice = src.slice(
-                            mdatStart + mdatOffset + sampleByteOffset,
-                            mdatStart + mdatOffset + sampleByteOffset + encBytes
-                        );
-                        const clear = await crypto.subtle.decrypt(
-                            { name: 'AES-CTR', counter, length: 64 }, cryptoKey, slice
-                        );
-                        out.set(new Uint8Array(clear), mdatStart + mdatOffset + sampleByteOffset);
-                        blockCount += BigInt(Math.ceil(encBytes / 16));
-                        sampleByteOffset += encBytes;
-                    }
-                }
-                mdatOffset += sampleByteOffset;
-
-            } else {
-                // Full-sample encryption (typical for AAC audio):
-                // the entire sample payload is one AES-CTR stream starting at block 0.
-                // Use trun per-sample size; fall back to tfhd default_sample_size.
-                const sampleSize = trunSizes[si] || tfhdDefaultSize;
-                if (sampleSize > 0) {
-                    const counter = buildCTRCounter(iv, BigInt(0));
-                    const slice = src.slice(mdatStart + mdatOffset, mdatStart + mdatOffset + sampleSize);
-                    const clear = await crypto.subtle.decrypt(
-                        { name: 'AES-CTR', counter, length: 64 }, cryptoKey, slice
-                    );
-                    out.set(new Uint8Array(clear), mdatStart + mdatOffset);
-                    mdatOffset += sampleSize;
-                } else {
-                    _log('[dec] WARN sample[' + si + '] sampleSize=0 — si quedó sin avanzar mdatOffset');
+            for (const { clearBytes, encBytes } of subsamples) {
+                sampleByteOffset += clearBytes;
+                if (encBytes > 0) {
+                    const absStart = mdatStart + mdatOffset + sampleByteOffset;
+                    tasks.push({
+                        counter:   buildCTRCounter(iv, blockCount),
+                        dataView:  src.subarray(absStart, absStart + encBytes), // sin copia
+                        outOffset: absStart,
+                    });
+                    blockCount += BigInt(Math.ceil(encBytes / 16));
+                    sampleByteOffset += encBytes;
                 }
             }
+            mdatOffset += sampleByteOffset;
+
+        } else if (subsamples === null) {
+            // Encriptación total (audio AAC): el sample entero es un stream AES-CTR desde bloque 0.
+            const sampleSize = trunSizes[si] || tfhdDefaultSize;
+            if (sampleSize > 0) {
+                const absStart = mdatStart + mdatOffset;
+                tasks.push({
+                    counter:   buildCTRCounter(iv, BigInt(0)),
+                    dataView:  src.subarray(absStart, absStart + sampleSize),
+                    outOffset: absStart,
+                });
+            }
+            mdatOffset += trunSizes[si] || tfhdDefaultSize;
+
+        } else {
+            // subsamples es array vacío: useSubsamples=true pero subsampleCount=0
+            // → sample 100% claro, no hay nada que desencriptar. Solo avanzar el offset.
+            mdatOffset += trunSizes[si] || tfhdDefaultSize;
         }
-    } catch(e) {
+    }
+
+    _log('[dec] seg sz=' + src.length + ' samples=' + samples.length
+        + ' sub=' + hasSub + (firstSub && firstSub.subsamples ? ' sub[0]cnt=' + firstSub.subsamples.length : '')
+        + ' tasks=' + tasks.length);
+
+    // ── Fase 2: decrypt en paralelo (un solo await para todo el segmento) ──────
+    try {
+        const decrypted = await Promise.all(
+            tasks.map(t => crypto.subtle.decrypt(
+                { name: 'AES-CTR', counter: t.counter, length: 64 },
+                cryptoKey,
+                t.dataView
+            ))
+        );
+        for (let i = 0; i < tasks.length; i++) {
+            out.set(new Uint8Array(decrypted[i]), tasks[i].outOffset);
+        }
+    } catch (e) {
         _log('[dec] EXCEPCION: ' + e);
     }
 
