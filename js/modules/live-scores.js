@@ -304,10 +304,10 @@ export async function detectLiveMatch(urlTitle) {
                 ev.text?.toLowerCase().includes("convierte");
               if (isHome) homeShootout.push(scored);
               else awayShootout.push(scored);
-            } else if (type.includes("goal") || type.includes("card")) {
+            } else if (type.includes("goal") || type.includes("card") || (type.includes("penalty") && type.includes("scored"))) {
               const isHome = ev.team?.id === homeId;
               const item = {
-                type: type.includes("goal")
+                type: (type.includes("goal") || type.includes("penalty"))
                   ? "goal"
                   : type.includes("red")
                     ? "red-card"
