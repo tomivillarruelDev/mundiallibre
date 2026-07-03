@@ -33,14 +33,6 @@
     const overlay    = document.getElementById('overlay');
     const overlayMsg = document.getElementById('overlay-msg');
     const retryBtn   = document.getElementById('retry-btn');
-    const ts         = () => new Date().toISOString().slice(11, 22);
-    const log        = (m) => window.parent.postMessage({ type: 'player-frame-log', msg: ts() + ' ' + m }, '*');
-
-    ['play','pause','playing','ended','stalled','waiting','suspend','emptied','canplay','loadedmetadata'].forEach(ev =>
-      video.addEventListener(ev, () => log('[video] ' + ev + ' rs=' + video.readyState + ' paused=' + video.paused))
-    );
-    video.addEventListener('error', () => log('[video.error] code=' + video.error?.code));
-    document.addEventListener('visibilitychange', () => log('[vis] ' + document.visibilityState));
 
     let player          = null;
     let decryptor       = null;
@@ -97,7 +89,6 @@
       } else {
         pendingCanplay = () => {
           pendingCanplay = null;
-          log('[reload] canplay→play');
           video.play().catch(() => {});
         };
         video.addEventListener('canplay', pendingCanplay, { once: true });
@@ -115,8 +106,7 @@
       stallTimer = setTimeout(() => {
         stallTimer = null;
         if (reloadInProgress || !player || video.paused) return;
-        log('[stall] 4s → retryStreaming');
-        try { player.retryStreaming(); } catch(e) { log('[stall] err: ' + e); }
+        try { player.retryStreaming(); } catch(e) {}
       }, 4000);
     });
 
@@ -125,8 +115,6 @@
       cancelPendingCanplay();
       if (video.readyState >= 3) { reloadInProgress = false; hideOverlay(); return; }
 
-      // Destroy and recreate the player to get a clean MSE pipeline and fresh filter registry
-      log('[reload] destroy + new player...');
       try { await player.destroy(); } catch(e) {}
       player = new shaka.Player(video);
       setupFilters(player);
@@ -135,19 +123,16 @@
         streaming: { bufferingGoal: 20, rebufferingGoal: 10, lowLatencyMode: false }
       });
       player.addEventListener('error', (event) => {
-        log('[shaka] code=' + event.detail.code + ' sev=' + event.detail.severity);
         if (event.detail.severity !== 2 || reloadInProgress) return;
-        setTimeout(() => { if (!reloadInProgress) { log('[shaka] retryStreaming'); player.retryStreaming(); } }, 500);
+        setTimeout(() => { if (!reloadInProgress) player.retryStreaming(); }, 500);
       });
 
       try {
-        log('[reload] load()...');
         reloadInProgress = true;
         await player.load(manifest);
-        log('[reload] ok rs=' + video.readyState);
         playWhenReady();
       } catch(e) {
-        log('[reload] FAILED ' + e);
+        // load failed — next emptied will retry
       } finally {
         reloadInProgress = false;
       }
@@ -157,7 +142,6 @@
       if (reloadInProgress || !player || !manifest) return;
       if (reloadAttempts >= 8) {
         showOverlay('Señal no disponible — intentá de nuevo en unos minutos', true);
-        log('[reload] max intentos');
         return;
       }
       video.pause();
@@ -165,7 +149,6 @@
       reloadAttempts++;
       const delay = reloadAttempts <= 1 ? 0 : Math.min(reloadAttempts * 2000, 8000);
       showOverlay('Reconectando señal...');
-      log('[reload] emptied #' + reloadAttempts + ' delay=' + delay + 'ms');
       setTimeout(doReload, delay);
     });
 
@@ -174,16 +157,14 @@
       reloadAttempts = 0;
       reloadInProgress = true;
       showOverlay('Reconectando señal...');
-      log('[retry] manual');
       doReload();
     });
 
     async function startPlayer(cfg) {
       try {
         manifest = cfg.manifest;
-        log('[start] manifest=' + manifest.slice(0, 60));
         shaka.polyfill.installAll();
-        if (window.ManagedMediaSource) { video.disableRemotePlayback = true; log('[start] MMS ok'); }
+        if (window.ManagedMediaSource) video.disableRemotePlayback = true;
 
         player = new shaka.Player(video);
         decryptor = await createIOSDecryptor(cfg.key);
@@ -193,37 +174,26 @@
           streaming: { bufferingGoal: 20, rebufferingGoal: 10, lowLatencyMode: false }
         });
         player.addEventListener('error', (event) => {
-          log('[shaka] code=' + event.detail.code + ' sev=' + event.detail.severity);
           if (event.detail.severity !== 2 || reloadInProgress) return;
-          setTimeout(() => { if (!reloadInProgress) { log('[shaka] retryStreaming'); player.retryStreaming(); } }, 500);
+          setTimeout(() => { if (!reloadInProgress) player.retryStreaming(); }, 500);
         });
 
         reloadInProgress = true;
-        log('[start] load()...');
         await player.load(manifest);
         reloadInProgress = false;
-        log('[start] ok rs=' + video.readyState);
-        video.play().catch(e => log('[start] play bloqueado: ' + e));
+        video.play().catch(() => {});
 
       } catch(e) {
         reloadInProgress = false;
-        log('[start] ERROR: ' + e);
         showOverlay('No se pudo iniciar la señal', true);
       }
     }
 
     window.addEventListener('message', ({ data }) => {
-      if (data?.type === 'player-frame-init') {
-        log('[frame] config recibida');
-        startPlayer(data.config);
-      }
+      if (data?.type === 'player-frame-init') startPlayer(data.config);
     });
 
-    window.__iosLog = (m) => log(m);
-
-    log('[frame] ready → padre');
     window.parent.postMessage({ type: 'player-frame-ready' }, '*');
-    setTimeout(() => { if (!manifest) log('[frame] WARN: sin config tras 3s'); }, 3000);
   </script>
 </body>
 </html>

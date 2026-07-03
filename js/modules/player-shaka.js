@@ -273,25 +273,21 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
     video.addEventListener('emptied', () => {
         if (!shakaReady || hasFallenBack || reloadInProgress) return;
         if (reloadAttempts >= 3) {
-            window.__iosLog && window.__iosLog('[reload] max intentos alcanzado — fallback');
             triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
             return;
         }
         reloadInProgress = true;
         reloadAttempts++;
-        window.__iosLog && window.__iosLog('[reload] emptied #' + reloadAttempts + ' — esperando fin de toque');
 
         const doReload = async () => {
             if (hasFallenBack) { reloadInProgress = false; return; }
             if (scrollGrace) { setTimeout(doReload, 300); return; }
             // Skip if Shaka already recovered on its own while we waited
             if (video.readyState >= 3) {
-                window.__iosLog && window.__iosLog('[reload] ya recuperado (readyState=' + video.readyState + ')');
                 reloadInProgress = false;
                 return;
             }
             try {
-                window.__iosLog && window.__iosLog('[reload] shakaPlayer.load()...');
                 await shakaPlayer.load(activeConfig.manifest);
                 postReloadGrace = true;
                 clearTimeout(postReloadGraceTimer);
@@ -309,14 +305,11 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
                 // directly, data is already there. Otherwise register the listener — it will
                 // fire once the buffer fills up.
                 if (video.readyState >= 3) {
-                    window.__iosLog && window.__iosLog('[reload] OK — readyState=' + video.readyState + ', play directo');
                     video.play().catch(() => {});
                 } else {
-                    window.__iosLog && window.__iosLog('[reload] OK — readyState=' + video.readyState + ', esperando canplay');
                     video.addEventListener('canplay', () => { video.play().catch(() => {}); }, { once: true });
                 }
             } catch (e) {
-                window.__iosLog && window.__iosLog('[reload] FAILED: ' + e);
                 if (!hasFallenBack) triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
             } finally {
                 reloadInProgress = false;
@@ -342,7 +335,6 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
         lastShakaErrorCode = event.detail.code;
         const isCritical = event.detail.severity === 2;
         const sup = suppressFallback();
-        window.__iosLog && window.__iosLog('[shaka] code=' + event.detail.code + ' sev=' + event.detail.severity + ' suppress=' + sup + ' reload=' + reloadInProgress);
         console.error("Shaka error code", event.detail.code, "severity", event.detail.severity, "object", event.detail);
         if (!isCritical) return;
         // If our emptied→load cycle is already running, don't also call retryStreaming()
@@ -351,10 +343,7 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
 
         if (sup) {
             setTimeout(() => {
-                if (!hasFallenBack && !reloadInProgress) {
-                    window.__iosLog && window.__iosLog('[shaka] retryStreaming');
-                    shakaPlayer.retryStreaming();
-                }
+                if (!hasFallenBack && !reloadInProgress) shakaPlayer.retryStreaming();
             }, 800);
         } else {
             triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
@@ -368,7 +357,6 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
     // the full reload — do NOT call play() here, it would trigger another MEDIA_ERR_DECODE.
     video.addEventListener('error', () => {
         if (!video.error || video.error.code === MediaError.MEDIA_ERR_ABORTED) return;
-        window.__iosLog && window.__iosLog('[video.err] code=' + video.error.code + ' suppress=' + suppressFallback() + ' readyState=' + video.readyState + ' reload=' + reloadInProgress);
         if (reloadInProgress) return; // emptied listener is already handling recovery
 
         if (suppressFallback()) {

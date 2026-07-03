@@ -17,10 +17,6 @@
  *   length:64 → rightmost 64 bits are the counter. Matches CENC spec exactly.
  */
 
-// ── Debug logger (writes to on-screen iOS panel when active) ─────────────────
-
-const _log = (m) => { try { if (window.__iosLog) window.__iosLog(m); } catch (_) {} };
-
 // ── MP4 box primitives ────────────────────────────────────────────────────────
 
 function r32(b, o) {
@@ -122,47 +118,29 @@ export async function decryptMediaSegment(data, cryptoKey) {
     const src = new Uint8Array(data instanceof ArrayBuffer ? data : data.buffer);
     const out = new Uint8Array(src); // copy; we overwrite encrypted regions
 
-    // Collect all top-level box types for diagnostics
-    const topBoxes = [];
     let moofBox = null, mdatBox = null;
     walk(src, 0, src.length, (b, pos, size, t) => {
-        topBoxes.push(t);
         if (t === 'moof') moofBox = { pos, size };
         else if (t === 'mdat') mdatBox = { pos, size };
     });
 
-    if (!moofBox || !mdatBox) {
-        _log('[dec] SKIP no moof/mdat — boxes:' + topBoxes.join(',') + ' sz=' + src.length);
-        return src.buffer;
-    }
+    if (!moofBox || !mdatBox) return src.buffer;
 
     const trafBox = findBox(src, moofBox.pos + 8, moofBox.pos + moofBox.size, ['traf']);
-    if (!trafBox) {
-        _log('[dec] SKIP no traf');
-        return src.buffer;
-    }
+    if (!trafBox) return src.buffer;
 
     let tfhdBox = null, sencBox = null, trunBox = null;
-    const trafBoxes = [];
     walk(src, trafBox.pos + 8, trafBox.pos + trafBox.size, (b, pos, size, t) => {
-        trafBoxes.push(t);
         if (t === 'tfhd') tfhdBox = { pos, size };
         else if (t === 'senc') sencBox = { pos, size };
         else if (t === 'trun') trunBox = { pos, size };
     });
 
-    if (!sencBox) {
-        _log('[dec] CLEAR (no senc) — traf:' + trafBoxes.join(','));
-        return src.buffer;
-    }
+    if (!sencBox) return src.buffer;
 
     const samples = parseSENC(src, sencBox);
     const trunSizes = trunBox ? parseTRUN(src, trunBox) : [];
     const tfhdDefaultSize = tfhdBox ? parseTFHD(src, tfhdBox) : 0;
-
-    // Log segment summary: whether subsamples are used, sample count, first sample subsample count
-    const firstSub = samples[0];
-    const hasSub = firstSub && firstSub.subsamples != null;
     const mdatStart = mdatBox.pos + 8;
 
     // ── Fase 1: recopilar todas las tareas de decrypt (sin awaits) ─────────────
@@ -216,24 +194,16 @@ export async function decryptMediaSegment(data, cryptoKey) {
         }
     }
 
-    _log('[dec] seg sz=' + src.length + ' samples=' + samples.length
-        + ' sub=' + hasSub + (firstSub && firstSub.subsamples ? ' sub[0]cnt=' + firstSub.subsamples.length : '')
-        + ' tasks=' + tasks.length);
-
     // ── Fase 2: decrypt en paralelo (un solo await para todo el segmento) ──────
-    try {
-        const decrypted = await Promise.all(
-            tasks.map(t => crypto.subtle.decrypt(
-                { name: 'AES-CTR', counter: t.counter, length: 64 },
-                cryptoKey,
-                t.dataView
-            ))
-        );
-        for (let i = 0; i < tasks.length; i++) {
-            out.set(new Uint8Array(decrypted[i]), tasks[i].outOffset);
-        }
-    } catch (e) {
-        _log('[dec] EXCEPCION: ' + e);
+    const decrypted = await Promise.all(
+        tasks.map(t => crypto.subtle.decrypt(
+            { name: 'AES-CTR', counter: t.counter, length: 64 },
+            cryptoKey,
+            t.dataView
+        ))
+    );
+    for (let i = 0; i < tasks.length; i++) {
+        out.set(new Uint8Array(decrypted[i]), tasks[i].outOffset);
     }
 
     return out.buffer;
