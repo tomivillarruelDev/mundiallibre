@@ -330,11 +330,24 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
                 clearTimeout(postReloadGraceTimer);
                 postReloadGraceTimer = setTimeout(() => { postReloadGrace = false; }, 5000);
                 video.volume = volumeSlider.value;
-                // CRITICAL: do NOT call play() here — readyState is still 0 right after
-                // load(). play() on readyState=0 triggers code=3 → emptied → reload loop.
-                // Wait for 'canplay' (readyState >= 3) before resuming playback.
-                video.addEventListener('canplay', () => { video.play().catch(() => {}); }, { once: true });
-                window.__iosLog && window.__iosLog('[reload] OK — esperando canplay, grace 5s');
+                // CRITICAL: never call play() on readyState=0 — it triggers MEDIA_ERR_DECODE
+                // (code=3) → new 'emptied' → reload loop.
+                //
+                // After load() resolves, 'canplay' may have ALREADY fired during the await
+                // (Shaka can buffer segments before resolving the Promise). If we only
+                // registered a 'canplay' listener here we'd miss it and the video would
+                // stay black forever in silence.
+                //
+                // Fix: check readyState immediately. If >= 3 (HAVE_FUTURE_DATA) → play()
+                // directly, data is already there. Otherwise register the listener — it will
+                // fire once the buffer fills up.
+                if (video.readyState >= 3) {
+                    window.__iosLog && window.__iosLog('[reload] OK — readyState=' + video.readyState + ', play directo');
+                    video.play().catch(() => {});
+                } else {
+                    window.__iosLog && window.__iosLog('[reload] OK — readyState=' + video.readyState + ', esperando canplay');
+                    video.addEventListener('canplay', () => { video.play().catch(() => {}); }, { once: true });
+                }
             } catch (e) {
                 window.__iosLog && window.__iosLog('[reload] FAILED: ' + e);
                 if (!hasFallenBack) triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
