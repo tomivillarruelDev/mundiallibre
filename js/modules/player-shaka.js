@@ -102,82 +102,23 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
         || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-    // On iOS 17+, ManagedMediaSource requires disableRemotePlayback before Shaka attaches.
-    if (window.ManagedMediaSource) {
-        video.disableRemotePlayback = true;
+    // iOS: ManagedMediaSource is too unstable for production (destroys itself on scroll).
+    // Use iframe directly — same stream, same keys, same quality, just a different player.
+    if (isIOS) {
+        hasFallenBack = true;
+        video.style.display = "none";
+        playerControls.style.display = "none";
+        centerPlayHud.style.display = "none";
+        iframeFallback.style.display = "block";
+        iframeFallback.src = activeConfig.iframeUrl;
+        hideLoader(loader);
+        return;
     }
 
     if (!shaka.Player.isBrowserSupported()) {
-        console.warn("[SHAKA] isBrowserSupported() = false — attempting anyway (iOS software CENC path).");
+        console.warn("[SHAKA] isBrowserSupported() = false — attempting anyway.");
     }
 
-    // ── DEBUG PANEL (iOS only, remove after diagnosis) ──────────────────────────
-    if (isIOS) {
-        const wrapper = Object.assign(document.createElement('div'), {
-            style: 'margin:8px 0;border:1px solid #0f0;border-radius:6px;overflow:hidden'
-        });
-        const header = Object.assign(document.createElement('div'), {
-            style: 'display:flex;align-items:center;justify-content:space-between;background:#0f0;padding:4px 8px'
-        });
-        const label = Object.assign(document.createElement('span'), {
-            style: 'color:#000;font:bold 11px monospace'
-        });
-        label.textContent = 'DEBUG LOG';
-        const copyBtn = Object.assign(document.createElement('button'), {
-            style: 'background:#000;color:#0f0;border:1px solid #0f0;border-radius:4px;padding:4px 12px;font:bold 12px monospace;cursor:pointer'
-        });
-        copyBtn.textContent = '📋 COPIAR TODO';
-        copyBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(panel.value).then(() => {
-                copyBtn.textContent = '✅ COPIADO';
-                setTimeout(() => { copyBtn.textContent = '📋 COPIAR TODO'; }, 2000);
-            }).catch(() => {
-                panel.select();
-                document.execCommand('copy');
-                copyBtn.textContent = '✅ COPIADO';
-                setTimeout(() => { copyBtn.textContent = '📋 COPIAR TODO'; }, 2000);
-            });
-        });
-        header.appendChild(label);
-        header.appendChild(copyBtn);
-        const panel = Object.assign(document.createElement('textarea'), {
-            id: '__dbg',
-            readOnly: true,
-            style: 'display:block;width:100%;box-sizing:border-box;height:240px;margin:0;padding:6px;background:#0a0a0a;color:#0f0;font:11px monospace;border:none;resize:vertical'
-        });
-        wrapper.appendChild(header);
-        wrapper.appendChild(panel);
-
-        // Insert right after the player container
-        const playerRef = document.getElementById('player-container');
-        if (playerRef && playerRef.parentNode) {
-            playerRef.parentNode.insertBefore(wrapper, playerRef.nextSibling);
-        } else {
-            document.body.appendChild(wrapper);
-        }
-
-        const ts = () => new Date().toISOString().slice(11,22);
-        window.__iosLog = (m) => {
-            panel.value += ts() + ' ' + m + '\n';
-            if (panel.value.length > 8000) panel.value = panel.value.slice(-6000);
-            panel.scrollTop = panel.scrollHeight;
-        };
-        ['touchstart','touchend','touchcancel','scroll'].forEach(ev =>
-            document.addEventListener(ev, () => window.__iosLog('[touch] ' + ev), { passive: true })
-        );
-        ['play','pause','ended','stalled','waiting','suspend','emptied'].forEach(ev =>
-            video.addEventListener(ev, () => window.__iosLog('[video] ' + ev + ' paused=' + video.paused + ' readyState=' + video.readyState))
-        );
-        video.addEventListener('error', () =>
-            window.__iosLog('[video.error] code=' + (video.error && video.error.code))
-        );
-        document.addEventListener('visibilitychange', () =>
-            window.__iosLog('[visibility] ' + document.visibilityState)
-        );
-        video.addEventListener('webkitendfullscreen', () => window.__iosLog('[webkit] endfullscreen'));
-        video.addEventListener('webkitbeginfullscreen', () => window.__iosLog('[webkit] beginfullscreen'));
-    }
-    // ── END DEBUG PANEL ─────────────────────────────────────────────────────────
 
     shakaPlayer = new shaka.Player(video);
 
