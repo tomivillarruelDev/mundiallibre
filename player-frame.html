@@ -13,13 +13,9 @@
       flex-direction: column; align-items: center; justify-content: center;
       gap: 16px; font-family: sans-serif; text-align: center; padding: 24px;
     }
-    #overlay.visible { display: flex; }
-    #overlay p { font-size: 15px; opacity: 0.8; line-height: 1.5; }
-    #retry-btn {
-      display: none; background: #fff; color: #000; border: none;
-      padding: 10px 28px; border-radius: 24px; font-size: 14px;
-      font-weight: bold; cursor: pointer;
-    }
+    #overlay.on { display: flex; }
+    #overlay p { font-size: 15px; opacity: 0.8; }
+    #retry-btn { display: none; background: #fff; color: #000; border: none; padding: 10px 28px; border-radius: 24px; font-size: 14px; font-weight: bold; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -51,13 +47,14 @@
     let manifest        = null;
     let reloadInProgress = false;
     let reloadAttempts  = 0;
+    let pendingCanplay  = null; // track single active canplay listener
 
     const showOverlay = (msg, showRetry = false) => {
       overlayMsg.textContent = msg;
       retryBtn.style.display = showRetry ? 'block' : 'none';
-      overlay.classList.add('visible');
+      overlay.classList.add('on');
     };
-    const hideOverlay = () => overlay.classList.remove('visible');
+    const hideOverlay = () => overlay.classList.remove('on');
 
     const setupFilters = (p) => {
       const net = p.getNetworkingEngine();
@@ -81,49 +78,69 @@
       });
     };
 
+    const cancelPendingCanplay = () => {
+      if (pendingCanplay) {
+        video.removeEventListener('canplay', pendingCanplay);
+        pendingCanplay = null;
+      }
+    };
+
+    const playWhenReady = () => {
+      cancelPendingCanplay();
+      if (video.readyState >= 3) {
+        video.play().catch(() => {});
+      } else {
+        pendingCanplay = () => {
+          pendingCanplay = null;
+          log('[reload] canplay→play');
+          video.play().catch(() => {});
+        };
+        video.addEventListener('canplay', pendingCanplay, { once: true });
+      }
+    };
+
     video.addEventListener('playing', () => {
       reloadAttempts = 0;
       hideOverlay();
     });
 
     const doReload = async () => {
+      cancelPendingCanplay();
       if (video.readyState >= 3) { reloadInProgress = false; hideOverlay(); return; }
 
-      // Full MSE pipeline reset: detach + attach gives iOS a completely fresh pipeline
-      log('[reload] detach + attach...');
-      try { await player.detach(); } catch(e) { log('[reload] detach err: ' + e); }
-      try { await player.attach(video); } catch(e) { log('[reload] attach err: ' + e); }
+      // Destroy and recreate the player to get a clean MSE pipeline and fresh filter registry
+      log('[reload] destroy + new player...');
+      try { await player.destroy(); } catch(e) {}
+      player = new shaka.Player(video);
       setupFilters(player);
       player.configure({
         manifest: { dash: { clockSyncUri: '' } },
         streaming: { bufferingGoal: 20, rebufferingGoal: 10, lowLatencyMode: false }
       });
+      player.addEventListener('error', (event) => {
+        log('[shaka] code=' + event.detail.code + ' sev=' + event.detail.severity);
+        if (event.detail.severity !== 2 || reloadInProgress) return;
+        setTimeout(() => { if (!reloadInProgress) { log('[shaka] retryStreaming'); player.retryStreaming(); } }, 500);
+      });
 
       try {
         log('[reload] load()...');
+        reloadInProgress = true;
         await player.load(manifest);
         log('[reload] ok rs=' + video.readyState);
-        if (video.readyState >= 3) {
-          video.play().catch(() => {});
-        } else {
-          video.addEventListener('canplay', () => {
-            log('[reload] canplay→play');
-            video.play().catch(() => {});
-          }, { once: true });
-        }
-      } catch (e) {
+        playWhenReady();
+      } catch(e) {
         log('[reload] FAILED ' + e);
+      } finally {
         reloadInProgress = false;
-        return;
       }
-      reloadInProgress = false;
     };
 
     video.addEventListener('emptied', () => {
       if (reloadInProgress || !player || !manifest) return;
-      if (reloadAttempts >= 5) {
-        showOverlay('Señal no disponible temporalmente', true);
-        log('[reload] max intentos — mostrando overlay');
+      if (reloadAttempts >= 8) {
+        showOverlay('Señal no disponible — intentá de nuevo en unos minutos', true);
+        log('[reload] max intentos');
         return;
       }
       video.pause();
@@ -140,7 +157,7 @@
       reloadAttempts = 0;
       reloadInProgress = true;
       showOverlay('Reconectando señal...');
-      log('[retry] manual retry');
+      log('[retry] manual');
       doReload();
     });
 
@@ -154,12 +171,10 @@
         player = new shaka.Player(video);
         decryptor = await createIOSDecryptor(cfg.key);
         setupFilters(player);
-
         player.configure({
           manifest: { dash: { clockSyncUri: '' } },
           streaming: { bufferingGoal: 20, rebufferingGoal: 10, lowLatencyMode: false }
         });
-
         player.addEventListener('error', (event) => {
           log('[shaka] code=' + event.detail.code + ' sev=' + event.detail.severity);
           if (event.detail.severity !== 2 || reloadInProgress) return;
@@ -170,10 +185,10 @@
         log('[start] load()...');
         await player.load(manifest);
         reloadInProgress = false;
-        log('[start] load ok rs=' + video.readyState);
+        log('[start] ok rs=' + video.readyState);
         video.play().catch(e => log('[start] play bloqueado: ' + e));
 
-      } catch (e) {
+      } catch(e) {
         reloadInProgress = false;
         log('[start] ERROR: ' + e);
         showOverlay('No se pudo iniciar la señal', true);
