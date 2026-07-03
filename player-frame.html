@@ -47,7 +47,9 @@
     let manifest        = null;
     let reloadInProgress = false;
     let reloadAttempts  = 0;
-    let pendingCanplay  = null; // track single active canplay listener
+    let pendingCanplay  = null;
+    let stallTimer      = null;
+    let stallOverlayTimer = null;
 
     const showOverlay = (msg, showRetry = false) => {
       overlayMsg.textContent = msg;
@@ -85,6 +87,11 @@
       }
     };
 
+    const clearStallTimers = () => {
+      if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
+      if (stallOverlayTimer) { clearTimeout(stallOverlayTimer); stallOverlayTimer = null; }
+    };
+
     const playWhenReady = () => {
       cancelPendingCanplay();
       if (video.readyState >= 3) {
@@ -102,9 +109,29 @@
     video.addEventListener('playing', () => {
       reloadAttempts = 0;
       hideOverlay();
+      clearStallTimers();
+    });
+
+    video.addEventListener('stalled', () => {
+      if (reloadInProgress) return;
+      if (!stallOverlayTimer) {
+        stallOverlayTimer = setTimeout(() => {
+          stallOverlayTimer = null;
+          if (!video.paused && !reloadInProgress) showOverlay('Buscando señal...');
+        }, 2000);
+      }
+      if (!stallTimer) {
+        stallTimer = setTimeout(() => {
+          stallTimer = null;
+          if (reloadInProgress || !player || video.paused) return;
+          log('[stall] 4s → retryStreaming');
+          try { player.retryStreaming(); } catch(e) { log('[stall] err: ' + e); }
+        }, 4000);
+      }
     });
 
     const doReload = async () => {
+      clearStallTimers();
       cancelPendingCanplay();
       if (video.readyState >= 3) { reloadInProgress = false; hideOverlay(); return; }
 
