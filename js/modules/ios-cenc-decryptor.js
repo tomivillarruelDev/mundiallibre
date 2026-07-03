@@ -187,7 +187,7 @@ export async function decryptMediaSegment(data, cryptoKey) {
                     const absStart = mdatStart + mdatOffset + sampleByteOffset;
                     tasks.push({
                         counter:   buildCTRCounter(iv, blockCount),
-                        dataView:  src.subarray(absStart, absStart + encBytes), // sin copia
+                        dataView:  src.slice(absStart, absStart + encBytes),
                         outOffset: absStart,
                     });
                     blockCount += BigInt(Math.ceil(encBytes / 16));
@@ -203,7 +203,7 @@ export async function decryptMediaSegment(data, cryptoKey) {
                 const absStart = mdatStart + mdatOffset;
                 tasks.push({
                     counter:   buildCTRCounter(iv, BigInt(0)),
-                    dataView:  src.subarray(absStart, absStart + sampleSize),
+                    dataView:  src.slice(absStart, absStart + sampleSize),
                     outOffset: absStart,
                 });
             }
