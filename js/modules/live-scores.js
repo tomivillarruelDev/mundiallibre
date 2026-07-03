@@ -1,6 +1,6 @@
 /* live-scores.js - Dynamic metadata loading and ESPN score API tracker */
 
-import { triggerGoalCelebration } from "./animations.js";
+import { triggerGoalCelebration } from "./animations.js?v=107";
 
 let prevHomeScore = null;
 let prevAwayScore = null;
@@ -97,15 +97,17 @@ export async function detectLiveMatch(urlTitle) {
   ];
 
   const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
   
   const pad = (n) => String(n).padStart(2, "0");
   const getYYYYMMDD = (d) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
   
-  const todayStr = getYYYYMMDD(today);
+  const yesterdayStr = getYYYYMMDD(yesterday);
   const tomorrowStr = getYYYYMMDD(tomorrow);
-  const datesParam = `dates=${todayStr}-${tomorrowStr}`;
+  const datesParam = `dates=${yesterdayStr}-${tomorrowStr}`;
 
   let allPreviousMatches = [];
   let allUpcomingMatches = [];
@@ -117,10 +119,8 @@ export async function detectLiveMatch(urlTitle) {
   let successCount = 0;
   for (const league of leagues) {
     try {
-      const res = await fetch(
-        `https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard?lang=es&region=ar&${datesParam}`,
-        { signal }
-      );
+      const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard?lang=es&region=ar&${datesParam}&_t=${Date.now()}`;
+      const res = await fetch(url, { signal });
       if (res.ok) {
         successCount++;
       } else {
@@ -280,7 +280,7 @@ export async function detectLiveMatch(urlTitle) {
     ) {
       try {
         const summaryRes = await fetch(
-          `https://site.api.espn.com/apis/site/v2/sports/soccer/${activeLeague}/summary?event=${activeLiveEvent.id}&lang=es&region=ar`,
+          `https://site.api.espn.com/apis/site/v2/sports/soccer/${activeLeague}/summary?event=${activeLiveEvent.id}&lang=es&region=ar&_t=${Date.now()}`,
           { signal }
         );
         if (summaryRes.ok) {
