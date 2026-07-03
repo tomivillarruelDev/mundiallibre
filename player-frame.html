@@ -7,18 +7,38 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
     video { width: 100%; height: 100%; object-fit: contain; display: block; }
+    #overlay {
+      display: none; position: absolute; inset: 0;
+      background: rgba(0,0,0,0.85); color: #fff;
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 16px; font-family: sans-serif; text-align: center; padding: 24px;
+    }
+    #overlay.visible { display: flex; }
+    #overlay p { font-size: 15px; opacity: 0.8; line-height: 1.5; }
+    #retry-btn {
+      display: none; background: #fff; color: #000; border: none;
+      padding: 10px 28px; border-radius: 24px; font-size: 14px;
+      font-weight: bold; cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <video id="v" playsinline controls></video>
+  <div id="overlay">
+    <p id="overlay-msg">Reconectando señal...</p>
+    <button id="retry-btn">Reintentar</button>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/shaka-player@5.0.5/dist/shaka-player.compiled.min.js"></script>
   <script type="module">
     import { createIOSDecryptor } from './js/modules/ios-cenc-decryptor.js';
 
-    const video = document.getElementById('v');
-    const ts    = () => new Date().toISOString().slice(11, 22);
-    const log   = (m) => window.parent.postMessage({ type: 'player-frame-log', msg: ts() + ' ' + m }, '*');
+    const video      = document.getElementById('v');
+    const overlay    = document.getElementById('overlay');
+    const overlayMsg = document.getElementById('overlay-msg');
+    const retryBtn   = document.getElementById('retry-btn');
+    const ts         = () => new Date().toISOString().slice(11, 22);
+    const log        = (m) => window.parent.postMessage({ type: 'player-frame-log', msg: ts() + ' ' + m }, '*');
 
     ['play','pause','playing','ended','stalled','waiting','suspend','emptied','canplay','loadedmetadata'].forEach(ev =>
       video.addEventListener(ev, () => log('[video] ' + ev + ' rs=' + video.readyState + ' paused=' + video.paused))
@@ -27,91 +47,113 @@
     document.addEventListener('visibilitychange', () => log('[vis] ' + document.visibilityState));
 
     let player          = null;
+    let decryptor       = null;
     let manifest        = null;
     let reloadInProgress = false;
     let reloadAttempts  = 0;
 
-    const sendError = (reason) => {
-      log('[ERROR] ' + reason + ' — fallback en 15s');
-      setTimeout(() => window.parent.postMessage({ type: 'player-frame-error' }, '*'), 15000);
+    const showOverlay = (msg, showRetry = false) => {
+      overlayMsg.textContent = msg;
+      retryBtn.style.display = showRetry ? 'block' : 'none';
+      overlay.classList.add('visible');
+    };
+    const hideOverlay = () => overlay.classList.remove('visible');
+
+    const setupFilters = (p) => {
+      const net = p.getNetworkingEngine();
+      net.registerResponseFilter((type, response) => {
+        if (type !== shaka.net.NetworkingEngine.RequestType.MANIFEST) return;
+        const xml = new TextDecoder().decode(new Uint8Array(response.data));
+        response.data = new TextEncoder().encode(
+          xml.replace(/<ContentProtection\b[^>]*\/>/g, '')
+             .replace(/<ContentProtection\b[\s\S]*?<\/ContentProtection>/g, '')
+        ).buffer;
+      });
+      net.registerResponseFilter(async (type, response) => {
+        if (type !== shaka.net.NetworkingEngine.RequestType.SEGMENT) return;
+        const bytes = new Uint8Array(response.data);
+        const box = bytes.length >= 8 ? String.fromCharCode(bytes[4], bytes[5], bytes[6], bytes[7]) : '';
+        if (box === 'ftyp' || box === 'moov') {
+          response.data = decryptor.transformInit(response.data);
+        } else {
+          response.data = await decryptor.decryptMedia(response.data);
+        }
+      });
     };
 
-    video.addEventListener('playing', () => { reloadAttempts = 0; });
+    video.addEventListener('playing', () => {
+      reloadAttempts = 0;
+      hideOverlay();
+    });
+
+    const doReload = async () => {
+      if (video.readyState >= 3) { reloadInProgress = false; hideOverlay(); return; }
+
+      // Full MSE pipeline reset: detach + attach gives iOS a completely fresh pipeline
+      log('[reload] detach + attach...');
+      try { await player.detach(); } catch(e) { log('[reload] detach err: ' + e); }
+      try { await player.attach(video); } catch(e) { log('[reload] attach err: ' + e); }
+      setupFilters(player);
+      player.configure({
+        manifest: { dash: { clockSyncUri: '' } },
+        streaming: { bufferingGoal: 20, rebufferingGoal: 10, lowLatencyMode: false }
+      });
+
+      try {
+        log('[reload] load()...');
+        await player.load(manifest);
+        log('[reload] ok rs=' + video.readyState);
+        if (video.readyState >= 3) {
+          video.play().catch(() => {});
+        } else {
+          video.addEventListener('canplay', () => {
+            log('[reload] canplay→play');
+            video.play().catch(() => {});
+          }, { once: true });
+        }
+      } catch (e) {
+        log('[reload] FAILED ' + e);
+        reloadInProgress = false;
+        return;
+      }
+      reloadInProgress = false;
+    };
 
     video.addEventListener('emptied', () => {
       if (reloadInProgress || !player || !manifest) return;
-      if (reloadAttempts >= 5) { sendError('max reloads'); return; }
+      if (reloadAttempts >= 5) {
+        showOverlay('Señal no disponible temporalmente', true);
+        log('[reload] max intentos — mostrando overlay');
+        return;
+      }
       video.pause();
       reloadInProgress = true;
       reloadAttempts++;
-      // Backoff: wait longer on each retry so the live stream moves past the bad segment window
       const delay = reloadAttempts <= 1 ? 0 : Math.min(reloadAttempts * 2000, 8000);
-      log('[reload] emptied #' + reloadAttempts + ' — delay=' + delay + 'ms');
+      showOverlay('Reconectando señal...');
+      log('[reload] emptied #' + reloadAttempts + ' delay=' + delay + 'ms');
+      setTimeout(doReload, delay);
+    });
 
-      setTimeout(async () => {
-        if (video.readyState >= 3) { reloadInProgress = false; return; }
-        try {
-          log('[reload] load()...');
-          await player.load(manifest);
-          log('[reload] ok rs=' + video.readyState);
-          // Seek to live edge to avoid re-loading the same bad segment window
-          try {
-            const sr = player.seekRange();
-            if (sr.end > sr.start + 5) {
-              video.currentTime = sr.end - 3;
-              log('[reload] seeked to edge ' + Math.round(sr.end - 3));
-            }
-          } catch (_) {}
-          if (video.readyState >= 3) {
-            video.play().catch(() => {});
-          } else {
-            video.addEventListener('canplay', () => { log('[reload] canplay→play'); video.play().catch(() => {}); }, { once: true });
-          }
-        } catch (e) {
-          log('[reload] FAILED ' + e);
-          sendError('reload falló: ' + e);
-        } finally {
-          reloadInProgress = false;
-        }
-      }, delay);
+    retryBtn.addEventListener('click', () => {
+      if (reloadInProgress) return;
+      reloadAttempts = 0;
+      reloadInProgress = true;
+      showOverlay('Reconectando señal...');
+      log('[retry] manual retry');
+      doReload();
     });
 
     async function startPlayer(cfg) {
       try {
         manifest = cfg.manifest;
         log('[start] manifest=' + manifest.slice(0, 60));
-        log('[start] shaka=' + (typeof shaka !== 'undefined' ? 'ok' : 'NO CARGADO'));
-
         shaka.polyfill.installAll();
         if (window.ManagedMediaSource) { video.disableRemotePlayback = true; log('[start] MMS ok'); }
 
         player = new shaka.Player(video);
-        log('[start] player creado');
-
-        const decryptor = await createIOSDecryptor(cfg.key);
-        log('[start] decryptor ok');
-
-        const net = player.getNetworkingEngine();
-
-        net.registerResponseFilter((type, response) => {
-          if (type !== shaka.net.NetworkingEngine.RequestType.MANIFEST) return;
-          const xml = new TextDecoder().decode(new Uint8Array(response.data));
-          response.data = new TextEncoder().encode(
-            xml.replace(/<ContentProtection\b[^>]*\/>/g, '')
-               .replace(/<ContentProtection\b[\s\S]*?<\/ContentProtection>/g, '')
-          ).buffer;
-        });
-
-        net.registerResponseFilter(async (type, response) => {
-          if (type !== shaka.net.NetworkingEngine.RequestType.SEGMENT) return;
-          const bytes = new Uint8Array(response.data);
-          const box = bytes.length >= 8 ? String.fromCharCode(bytes[4], bytes[5], bytes[6], bytes[7]) : '';
-          if (box === 'ftyp' || box === 'moov') {
-            response.data = decryptor.transformInit(response.data);
-          } else {
-            response.data = await decryptor.decryptMedia(response.data);
-          }
-        });
+        decryptor = await createIOSDecryptor(cfg.key);
+        setupFilters(player);
 
         player.configure({
           manifest: { dash: { clockSyncUri: '' } },
@@ -133,7 +175,8 @@
 
       } catch (e) {
         reloadInProgress = false;
-        sendError(String(e));
+        log('[start] ERROR: ' + e);
+        showOverlay('No se pudo iniciar la señal', true);
       }
     }
 
