@@ -44,14 +44,24 @@
       video.pause();
       reloadInProgress = true;
       reloadAttempts++;
-      log('[reload] emptied #' + reloadAttempts);
+      // Backoff: wait longer on each retry so the live stream moves past the bad segment window
+      const delay = reloadAttempts <= 1 ? 0 : Math.min(reloadAttempts * 2000, 8000);
+      log('[reload] emptied #' + reloadAttempts + ' — delay=' + delay + 'ms');
 
-      (async () => {
+      setTimeout(async () => {
         if (video.readyState >= 3) { reloadInProgress = false; return; }
         try {
           log('[reload] load()...');
           await player.load(manifest);
           log('[reload] ok rs=' + video.readyState);
+          // Seek to live edge to avoid re-loading the same bad segment window
+          try {
+            const sr = player.seekRange();
+            if (sr.end > sr.start + 5) {
+              video.currentTime = sr.end - 3;
+              log('[reload] seeked to edge ' + Math.round(sr.end - 3));
+            }
+          } catch (_) {}
           if (video.readyState >= 3) {
             video.play().catch(() => {});
           } else {
@@ -63,7 +73,7 @@
         } finally {
           reloadInProgress = false;
         }
-      })();
+      }, delay);
     });
 
     async function startPlayer(cfg) {
