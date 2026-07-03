@@ -49,7 +49,6 @@
     let reloadAttempts  = 0;
     let pendingCanplay  = null;
     let stallTimer      = null;
-    let stallOverlayTimer = null;
 
     const showOverlay = (msg, showRetry = false) => {
       overlayMsg.textContent = msg;
@@ -89,7 +88,6 @@
 
     const clearStallTimers = () => {
       if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
-      if (stallOverlayTimer) { clearTimeout(stallOverlayTimer); stallOverlayTimer = null; }
     };
 
     const playWhenReady = () => {
@@ -113,21 +111,13 @@
     });
 
     video.addEventListener('stalled', () => {
-      if (reloadInProgress) return;
-      if (!stallOverlayTimer) {
-        stallOverlayTimer = setTimeout(() => {
-          stallOverlayTimer = null;
-          if (!video.paused && !reloadInProgress) showOverlay('Buscando señal...');
-        }, 2000);
-      }
-      if (!stallTimer) {
-        stallTimer = setTimeout(() => {
-          stallTimer = null;
-          if (reloadInProgress || !player || video.paused) return;
-          log('[stall] 4s → retryStreaming');
-          try { player.retryStreaming(); } catch(e) { log('[stall] err: ' + e); }
-        }, 4000);
-      }
+      if (reloadInProgress || stallTimer) return;
+      stallTimer = setTimeout(() => {
+        stallTimer = null;
+        if (reloadInProgress || !player || video.paused) return;
+        log('[stall] 4s → retryStreaming');
+        try { player.retryStreaming(); } catch(e) { log('[stall] err: ' + e); }
+      }, 4000);
     });
 
     const doReload = async () => {
@@ -228,6 +218,8 @@
         startPlayer(data.config);
       }
     });
+
+    window.__iosLog = (m) => log(m);
 
     log('[frame] ready → padre');
     window.parent.postMessage({ type: 'player-frame-ready' }, '*');

@@ -122,75 +122,104 @@ export async function decryptMediaSegment(data, cryptoKey) {
     const src = new Uint8Array(data instanceof ArrayBuffer ? data : data.buffer);
     const out = new Uint8Array(src); // copy; we overwrite encrypted regions
 
+    // Collect all top-level box types for diagnostics
+    const topBoxes = [];
     let moofBox = null, mdatBox = null;
     walk(src, 0, src.length, (b, pos, size, t) => {
+        topBoxes.push(t);
         if (t === 'moof') moofBox = { pos, size };
         else if (t === 'mdat') mdatBox = { pos, size };
     });
-    if (!moofBox || !mdatBox) return src.buffer;
+
+    if (!moofBox || !mdatBox) {
+        _log('[dec] SKIP no moof/mdat — boxes:' + topBoxes.join(',') + ' sz=' + src.length);
+        return src.buffer;
+    }
 
     const trafBox = findBox(src, moofBox.pos + 8, moofBox.pos + moofBox.size, ['traf']);
-    if (!trafBox) return src.buffer;
+    if (!trafBox) {
+        _log('[dec] SKIP no traf');
+        return src.buffer;
+    }
 
     let tfhdBox = null, sencBox = null, trunBox = null;
+    const trafBoxes = [];
     walk(src, trafBox.pos + 8, trafBox.pos + trafBox.size, (b, pos, size, t) => {
+        trafBoxes.push(t);
         if (t === 'tfhd') tfhdBox = { pos, size };
         else if (t === 'senc') sencBox = { pos, size };
         else if (t === 'trun') trunBox = { pos, size };
     });
-    if (!sencBox) return src.buffer;
+
+    if (!sencBox) {
+        _log('[dec] CLEAR (no senc) — traf:' + trafBoxes.join(','));
+        return src.buffer;
+    }
 
     const samples = parseSENC(src, sencBox);
     const trunSizes = trunBox ? parseTRUN(src, trunBox) : [];
     const tfhdDefaultSize = tfhdBox ? parseTFHD(src, tfhdBox) : 0;
 
+    // Log segment summary: whether subsamples are used, sample count, first sample subsample count
+    const firstSub = samples[0];
+    const hasSub = firstSub && firstSub.subsamples != null;
+    _log('[dec] seg sz=' + src.length + ' samples=' + samples.length
+        + ' sub=' + hasSub + (firstSub && firstSub.subsamples ? ' sub[0]cnt=' + firstSub.subsamples.length : '')
+        + ' trun=' + trunSizes.length + ' tfhdSz=' + tfhdDefaultSize);
+
     const mdatStart = mdatBox.pos + 8;
     let mdatOffset = 0;
 
-    for (let si = 0; si < samples.length; si++) {
-        const { iv, subsamples } = samples[si];
+    try {
+        for (let si = 0; si < samples.length; si++) {
+            const { iv, subsamples } = samples[si];
 
-        if (subsamples && subsamples.length > 0) {
-            // Subsample encryption (typical for H.264 video):
-            // clear NAL header bytes are skipped; encrypted NAL body bytes are decrypted.
-            // AES-CTR block counter is NOT reset between subsamples of the same sample.
-            let blockCount = BigInt(0);
-            let sampleByteOffset = 0;
+            if (subsamples && subsamples.length > 0) {
+                // Subsample encryption (typical for H.264 video):
+                // clear NAL header bytes are skipped; encrypted NAL body bytes are decrypted.
+                // AES-CTR block counter is NOT reset between subsamples of the same sample.
+                let blockCount = BigInt(0);
+                let sampleByteOffset = 0;
 
-            for (const { clearBytes, encBytes } of subsamples) {
-                sampleByteOffset += clearBytes;
+                for (const { clearBytes, encBytes } of subsamples) {
+                    sampleByteOffset += clearBytes;
 
-                if (encBytes > 0) {
-                    const counter = buildCTRCounter(iv, blockCount);
-                    const slice = src.slice(
-                        mdatStart + mdatOffset + sampleByteOffset,
-                        mdatStart + mdatOffset + sampleByteOffset + encBytes
-                    );
+                    if (encBytes > 0) {
+                        const counter = buildCTRCounter(iv, blockCount);
+                        const slice = src.slice(
+                            mdatStart + mdatOffset + sampleByteOffset,
+                            mdatStart + mdatOffset + sampleByteOffset + encBytes
+                        );
+                        const clear = await crypto.subtle.decrypt(
+                            { name: 'AES-CTR', counter, length: 64 }, cryptoKey, slice
+                        );
+                        out.set(new Uint8Array(clear), mdatStart + mdatOffset + sampleByteOffset);
+                        blockCount += BigInt(Math.ceil(encBytes / 16));
+                        sampleByteOffset += encBytes;
+                    }
+                }
+                mdatOffset += sampleByteOffset;
+
+            } else {
+                // Full-sample encryption (typical for AAC audio):
+                // the entire sample payload is one AES-CTR stream starting at block 0.
+                // Use trun per-sample size; fall back to tfhd default_sample_size.
+                const sampleSize = trunSizes[si] || tfhdDefaultSize;
+                if (sampleSize > 0) {
+                    const counter = buildCTRCounter(iv, BigInt(0));
+                    const slice = src.slice(mdatStart + mdatOffset, mdatStart + mdatOffset + sampleSize);
                     const clear = await crypto.subtle.decrypt(
                         { name: 'AES-CTR', counter, length: 64 }, cryptoKey, slice
                     );
-                    out.set(new Uint8Array(clear), mdatStart + mdatOffset + sampleByteOffset);
-                    blockCount += BigInt(Math.ceil(encBytes / 16));
-                    sampleByteOffset += encBytes;
+                    out.set(new Uint8Array(clear), mdatStart + mdatOffset);
+                    mdatOffset += sampleSize;
+                } else {
+                    _log('[dec] WARN sample[' + si + '] sampleSize=0 — si quedó sin avanzar mdatOffset');
                 }
             }
-            mdatOffset += sampleByteOffset;
-
-        } else {
-            // Full-sample encryption (typical for AAC audio):
-            // the entire sample payload is one AES-CTR stream starting at block 0.
-            // Use trun per-sample size; fall back to tfhd default_sample_size.
-            const sampleSize = trunSizes[si] || tfhdDefaultSize;
-            if (sampleSize > 0) {
-                const counter = buildCTRCounter(iv, BigInt(0));
-                const slice = src.slice(mdatStart + mdatOffset, mdatStart + mdatOffset + sampleSize);
-                const clear = await crypto.subtle.decrypt(
-                    { name: 'AES-CTR', counter, length: 64 }, cryptoKey, slice
-                );
-                out.set(new Uint8Array(clear), mdatStart + mdatOffset);
-                mdatOffset += sampleSize;
-            }
         }
+    } catch(e) {
+        _log('[dec] EXCEPCION: ' + e);
     }
 
     return out.buffer;
