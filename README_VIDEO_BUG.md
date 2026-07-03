@@ -721,3 +721,178 @@ const suppressFallback = () =>
 |---|---|
 | `js/modules/player-shaka.js` | `suppressFallback()` con 4 grace periods; filtro por `severity === 2`; `shakaReady = true` post-load; `postFullscreenGrace` via `webkitendfullscreen` |
 | `js/modules/ui-controls.js` | `togglePlay` gated con `shakaReady`; debounce 300ms; `webkitEnterFullscreen` para iOS; touch listeners para seek |
+
+---
+
+# Investigación: Loop de recargas y "Señal no disponible" persistente en iOS
+
+**Estado:** ✅ Fix aplicado  
+**Fecha:** 2 de julio de 2026
+
+## El problema
+
+Tras resolver los falsos positivos con `suppressFallback()`, el player seguía cortando durante uso normal (scroll, tocar controles, pantalla completa). Los logs del panel de debug mostraban un loop:
+
+```
+[video] stalled paused=false readyState=3
+[video] emptied paused=false readyState=0       ← ManagedMediaSource destruido
+[reload] emptied #1 — esperando fin de toque
+[reload] shakaPlayer.load()...
+[reload] OK — grace 5s
+[video] error code=3                             ← MEDIA_ERR_DECODE inmediato
+[shaka] code=3016 sev=2 suppress=true
+[reload] emptied #2 — esperando fin de toque
+[reload] shakaPlayer.load()...
+[reload] OK — grace 5s
+[video] error code=3                             ← loop
+[reload] emptied #3...
+[reload] max intentos alcanzado — fallback       ← "Señal no disponible"
+```
+
+## Causa raíz identificada
+
+**`video.play()` llamado sobre `readyState=0`.** 
+
+Después de `shakaPlayer.load()`, el pipeline de ManagedMediaSource necesita tiempo para bufferear los primeros frames. En ese período, `readyState` es todavía `0` (HAVE_NOTHING — sin source attached). Llamar `video.play()` sobre `readyState=0` en iOS dispara `MEDIA_ERR_DECODE` (code=3), que a su vez dispara un nuevo evento `emptied`, que activa de nuevo el listener de recarga.
+
+```
+shakaPlayer.load() → ok (pipeline iniciando, readyState=0)
+video.play()        → MEDIA_ERR_DECODE code=3 (no hay frames todavía)
+video 'error' code=3 → 'emptied' → reload #2 → play() → code=3 → loop
+```
+
+Con tres intentos de reload fallidos (por el limit `reloadAttempts >= 3`) el fallback se activaba.
+
+## Evidencia del debug log que reveló la causa
+
+En el log de la sesión de las 21:33, el `emptied` inicial (21:33:05) se resolvió a `readyState=4` **sin que nuestro listener disparara** — porque en ese momento `shakaReady` era `false` (Shaka todavía estaba en su propio `load()` inicial). Esto confirmó que Shaka tiene capacidad de auto-recuperarse en algunos escenarios, pero que nuestro listener de `emptied` estaba interfiriendo con esa recuperación al llamar `play()` prematuramente.
+
+## Investigación de ManagedMediaSource
+
+Se investigaron las siguientes fuentes:
+
+### Arquitectura de ManagedMediaSource (Apple / Bitmovin)
+
+ManagedMediaSource (iOS 17+) es un reemplazo de MediaSource con tres eventos adicionales:
+
+| Evento | Significado |
+|--------|-------------|
+| `startstreaming` | iOS autoriza descargar datos de red |
+| `endstreaming` | iOS pide frenar las descargas (batería/memoria) |
+| `qualitychange` | iOS sugiere una calidad preferida |
+
+Shaka Player 5.x registra estos eventos internamente:
+```javascript
+// Shaka lib/media/media_source_engine.js
+this.eventManager_.listen(mediaSource, 'startstreaming', () => {
+    this.streamingAllowed_ = true;
+});
+this.eventManager_.listen(mediaSource, 'endstreaming', () => {
+    this.streamingAllowed_ = false;
+});
+```
+
+La flag `streamingAllowed_` controla si Shaka continúa buffereando segmentos. Esto significa que iOS puede ordenarle a Shaka que pause las descargas sin destruir el pipeline.
+
+### ¿Por qué se dispara `emptied` durante scroll?
+
+Cuando iOS interrumpe ManagedMediaSource por scroll/background:
+- Escenario leve: `endstreaming` → Shaka pausa descargas → `startstreaming` → Shaka reanuda. El stream se recupera solo.
+- Escenario severo (más común): iOS destruye completamente la sesión de ManagedMediaSource → video dispara `emptied` → `readyState=0` → Shaka queda en estado de error sin source.
+
+Nuestros logs siempre mostraban `readyState=0` tras `emptied`, lo que indica el escenario severo.
+
+### ¿Por qué `retryStreaming()` no es suficiente?
+
+`retryStreaming()` limpia el estado de error de Shaka y reanuda el buffering, pero **requiere que el MediaSource siga abierto**. Si `readyState=0` (HAVE_NOTHING), no hay source — `retryStreaming()` no puede re-adjuntar el pipeline. Se necesita un `shakaPlayer.load()` completo para reconstruirlo desde cero.
+
+### ¿Por qué el video nativo de iOS no es una alternativa?
+
+Investigado y descartado. El stream es DASH (`.mpd`) con CENC AES-128-CTR. iOS Safari:
+- No soporta DASH nativamente (solo HLS)
+- Su CDM nativo solo soporta AES-128-CBC (cbcs), no AES-128-CTR (cenc)
+- No existe un endpoint HLS alternativo (confirmado por desofuscación del iframe)
+
+La única vía es Shaka + descifrado por software, igual que hace Bitmovin en el iframe.
+
+## Fix aplicado
+
+Tres cambios coordinados en `player-shaka.js`:
+
+### 1. `emptied` listener: `canplay` en lugar de `play()` inmediato
+
+```javascript
+// ANTES (causa del loop):
+await shakaPlayer.load(activeConfig.manifest);
+video.play().catch(() => {}); // ← play() sobre readyState=0 → code=3 → loop
+
+// DESPUÉS (fix):
+await shakaPlayer.load(activeConfig.manifest);
+// 'canplay' solo dispara cuando readyState >= 3 (el browser tiene frames para reproducir)
+video.addEventListener('canplay', () => { video.play().catch(() => {}); }, { once: true });
+```
+
+También se restableció el timing original de 300ms + polling `scrollGrace` (una versión intermedia usaba 8 segundos de espera, lo que producía 8s de pantalla negra sin mejorar la lógica — fue revertido).
+
+### 2. Shaka error listener: no llamar `retryStreaming()` si ya hay un reload en curso
+
+```javascript
+shakaPlayer.addEventListener('error', (event) => {
+    // ...
+    if (reloadInProgress) return; // ← nuevo: evita dos mecanismos de recuperación en paralelo
+
+    if (sup) {
+        setTimeout(() => {
+            if (!hasFallenBack && !reloadInProgress) shakaPlayer.retryStreaming();
+        }, 800);
+    } else {
+        triggerFallback(...);
+    }
+});
+```
+
+Sin este check, el listener de `emptied` llamaba `load()` mientras simultáneamente el error listener llamaba `retryStreaming()` — dos mecanismos de recuperación conflictivos sobre la misma instancia de Shaka.
+
+### 3. Video error listener: no llamar `play()` si `readyState=0`
+
+```javascript
+video.addEventListener('error', () => {
+    // ...
+    if (reloadInProgress) return; // ya lo está manejando el listener de 'emptied'
+
+    if (suppressFallback()) {
+        if (video.readyState > 0) {
+            // Solo intentar play() si el pipeline tiene data
+            setTimeout(() => {
+                if (!hasFallenBack && video.paused) video.play().catch(() => {});
+            }, 800);
+        }
+        // Si readyState=0: el listener de 'emptied' maneja el reload
+    } else {
+        triggerFallback(...);
+    }
+});
+```
+
+## Tabla actualizada de decisión
+
+| Error | readyState | `suppressFallback()` | `reloadInProgress` | Acción |
+|-------|-----------|---------------------|--------------------|--------|
+| Shaka CRITICAL | 0 | — | false | `emptied` listener maneja el reload |
+| Shaka CRITICAL | 0 | — | true | Ignorado (ya en proceso) |
+| Shaka CRITICAL | >0 | true | false | `retryStreaming()` tras 800ms |
+| Shaka CRITICAL | >0 | false | false | `triggerFallback()` |
+| `video.error` code=3 | 0 | — | true | Ignorado (reload en proceso) |
+| `video.error` code=3 | >0 | true | false | `play()` tras 800ms |
+| `video.error` code=1 | — | — | — | Ignorado (MEDIA_ERR_ABORTED, play/pause rápido) |
+| 3 reloads fallidos | — | — | — | `triggerFallback()` definitivo |
+
+## Fuentes consultadas
+
+- [Bitmovin — Apple's new Managed Media Source: Everything you need to know](https://bitmovin.com/blog/managed-media-source/)
+- [Shaka Player GitHub — Issue #5271: Support through Managed MSE](https://github.com/shaka-project/shaka-player/issues/5271)
+- [Shaka Player GitHub — PR #5683: feat: Use ManagedMediaSource when available](https://github.com/shaka-project/shaka-player/pull/5683)
+- [Shaka Player source — lib/media/media_source_engine.js](https://shaka-project.github.io/shaka-player/docs/api/lib_media_media_source_engine.js.html) (evidencia de `startstreaming`/`endstreaming` handlers y `streamingAllowed_` flag)
+- [hls.js GitHub — Issue #6197: ManagedMediaSource + disableRemotePlayback in Safari](https://github.com/video-dev/hls.js/issues/6197)
+- [Apple Developer Forums — HtmlVideoElement Suspended on iOS Safari](https://developer.apple.com/forums/thread/739368)
+- [W3C Media Source — Proposal: ManagedMediaSource API](https://github.com/w3c/media-source/issues/320)

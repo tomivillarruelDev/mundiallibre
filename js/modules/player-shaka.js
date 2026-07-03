@@ -290,16 +290,13 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
 
     // When iOS destroys ManagedMediaSource during scroll/interaction, the video element
     // fires 'emptied' and drops to readyState=0. retryStreaming() is useless at that point
-    // because there is no source — we need a full shakaPlayer.load() to rebuild the pipeline.
+    // because there is no source attached — we need a full shakaPlayer.load() to rebuild
+    // the pipeline.
     //
-    // IMPORTANT: Shaka can self-recover from transient 'emptied' events without intervention
-    // (evidenced by 21:33:05 log: 'emptied' fired, no reload, readyState=4 within ~11s).
-    // We wait 8 seconds before intervening so Shaka has time to self-recover first.
-    //
-    // After a forced reload, we MUST NOT call video.play() immediately after shakaPlayer.load():
-    // the video element is still at readyState=0, and play() on readyState=0 triggers a new
-    // MEDIA_ERR_DECODE (code=3) → another 'emptied' → infinite reload loop. Instead we
-    // add a one-shot 'canplay' listener so play() only fires when the pipeline is ready.
+    // ROOT CAUSE of the reload loop: calling video.play() immediately after shakaPlayer.load()
+    // while readyState is still 0 (HAVE_NOTHING) triggers MEDIA_ERR_DECODE (code=3), which
+    // fires another 'emptied', which starts the whole cycle again. Fix: use a one-shot
+    // 'canplay' listener so play() only fires once the pipeline has data (readyState >= 3).
     let reloadInProgress = false;
     let postReloadGrace = false;
     let postReloadGraceTimer = null;
@@ -308,43 +305,44 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
 
     video.addEventListener('emptied', () => {
         if (!shakaReady || hasFallenBack || reloadInProgress) return;
+        if (reloadAttempts >= 3) {
+            window.__iosLog && window.__iosLog('[reload] max intentos alcanzado — fallback');
+            triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
+            return;
+        }
         reloadInProgress = true;
-        window.__iosLog && window.__iosLog('[reload] emptied — waiting 8s for self-recovery');
+        reloadAttempts++;
+        window.__iosLog && window.__iosLog('[reload] emptied #' + reloadAttempts + ' — esperando fin de toque');
 
-        setTimeout(async () => {
+        const doReload = async () => {
             if (hasFallenBack) { reloadInProgress = false; return; }
-            // If Shaka self-recovered while we waited, don't interfere
+            if (scrollGrace) { setTimeout(doReload, 300); return; }
+            // Skip if Shaka already recovered on its own while we waited
             if (video.readyState >= 3) {
-                window.__iosLog && window.__iosLog('[reload] self-recovered (readyState=' + video.readyState + ') — skip');
+                window.__iosLog && window.__iosLog('[reload] ya recuperado (readyState=' + video.readyState + ')');
                 reloadInProgress = false;
                 return;
             }
-            if (reloadAttempts >= 3) {
-                window.__iosLog && window.__iosLog('[reload] max intentos alcanzado — fallback');
-                triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
-                reloadInProgress = false;
-                return;
-            }
-            reloadAttempts++;
-            window.__iosLog && window.__iosLog('[reload] no self-recovery — shakaPlayer.load() #' + reloadAttempts);
             try {
+                window.__iosLog && window.__iosLog('[reload] shakaPlayer.load()...');
                 await shakaPlayer.load(activeConfig.manifest);
-                // Suppress fallback errors while the pipeline re-initializes
                 postReloadGrace = true;
                 clearTimeout(postReloadGraceTimer);
                 postReloadGraceTimer = setTimeout(() => { postReloadGrace = false; }, 5000);
                 video.volume = volumeSlider.value;
-                // Wait for 'canplay' before calling play() — calling it on readyState=0
-                // causes MEDIA_ERR_DECODE which restarts the emptied→reload loop.
+                // CRITICAL: do NOT call play() here — readyState is still 0 right after
+                // load(). play() on readyState=0 triggers code=3 → emptied → reload loop.
+                // Wait for 'canplay' (readyState >= 3) before resuming playback.
                 video.addEventListener('canplay', () => { video.play().catch(() => {}); }, { once: true });
-                window.__iosLog && window.__iosLog('[reload] OK — waiting canplay, grace 5s');
+                window.__iosLog && window.__iosLog('[reload] OK — esperando canplay, grace 5s');
             } catch (e) {
                 window.__iosLog && window.__iosLog('[reload] FAILED: ' + e);
                 if (!hasFallenBack) triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
             } finally {
                 reloadInProgress = false;
             }
-        }, 8000);
+        };
+        setTimeout(doReload, 300);
     });
 
     // Returns true when we should NOT trigger fallback:
@@ -364,13 +362,19 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
         lastShakaErrorCode = event.detail.code;
         const isCritical = event.detail.severity === 2;
         const sup = suppressFallback();
-        window.__iosLog && window.__iosLog('[shaka] code=' + event.detail.code + ' sev=' + event.detail.severity + ' suppress=' + sup + ' grace:scroll=' + scrollGrace + ' fs=' + postFullscreenGrace + ' vis=' + visibilityGrace);
+        window.__iosLog && window.__iosLog('[shaka] code=' + event.detail.code + ' sev=' + event.detail.severity + ' suppress=' + sup + ' reload=' + reloadInProgress);
         console.error("Shaka error code", event.detail.code, "severity", event.detail.severity, "object", event.detail);
         if (!isCritical) return;
+        // If our emptied→load cycle is already running, don't also call retryStreaming()
+        // — two concurrent recovery paths conflict and leave the stream in a broken state.
+        if (reloadInProgress) return;
 
         if (sup) {
             setTimeout(() => {
-                if (!hasFallenBack) { window.__iosLog && window.__iosLog('[shaka] retryStreaming'); shakaPlayer.retryStreaming(); }
+                if (!hasFallenBack && !reloadInProgress) {
+                    window.__iosLog && window.__iosLog('[shaka] retryStreaming');
+                    shakaPlayer.retryStreaming();
+                }
             }, 800);
         } else {
             triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
@@ -379,15 +383,23 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
 
     // Listen for video tag errors.
     // Skip MEDIA_ERR_ABORTED (code 1): fires on rapid play/pause, not fatal.
-    // When suppressed, try to resume play — iOS may have paused the video internally.
+    // When suppressed and readyState > 0: try to resume — iOS may have paused internally.
+    // When readyState = 0: ManagedMediaSource is destroyed; the emptied listener handles
+    // the full reload — do NOT call play() here, it would trigger another MEDIA_ERR_DECODE.
     video.addEventListener('error', () => {
         if (!video.error || video.error.code === MediaError.MEDIA_ERR_ABORTED) return;
-        window.__iosLog && window.__iosLog('[video.err] code=' + video.error.code + ' suppress=' + suppressFallback());
+        window.__iosLog && window.__iosLog('[video.err] code=' + video.error.code + ' suppress=' + suppressFallback() + ' readyState=' + video.readyState + ' reload=' + reloadInProgress);
+        if (reloadInProgress) return; // emptied listener is already handling recovery
 
         if (suppressFallback()) {
-            setTimeout(() => {
-                if (!hasFallenBack && video.paused) video.play().catch(() => {});
-            }, 800);
+            if (video.readyState >= 3) {
+                // HAVE_FUTURE_DATA: browser has buffered frames — safe to call play()
+                setTimeout(() => {
+                    if (!hasFallenBack && video.paused) video.play().catch(() => {});
+                }, 800);
+            }
+            // readyState < 3: not enough data yet — calling play() here would trigger code=3 again.
+            // The emptied listener or canplay handler will resume playback once data arrives.
         } else {
             console.error("Video element error code:", video.error.code, "message:", video.error.message);
             triggerFallback(activeConfig, video, playerControls, centerPlayHud, iframeFallback, loader);
