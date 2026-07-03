@@ -921,7 +921,7 @@ body {
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   /* Scoreboard Widget Mobile optimization */
   .live-scoreboard-container {
     width: 100%;
@@ -1319,11 +1319,43 @@ body {
     flex-direction: column;
     gap: 16px;
   }
+  .agenda-card {
+    padding: 12px 12px;
+  }
   .agenda-team {
     width: 35%;
+    gap: 6px;
+  }
+  .home-agenda {
+    justify-content: flex-end;
+    text-align: right;
+  }
+  .away-agenda {
+    justify-content: flex-start;
+    text-align: left;
+  }
+  .agenda-logo {
+    width: 22px;
+    height: 22px;
   }
   .agenda-name {
     font-size: 12px;
+  }
+  .agenda-score-box {
+    padding: 4px 8px;
+    min-width: 60px;
+    gap: 4px;
+    margin: 0 12px; /* Garantiza separación para que no se encime */
+  }
+  .agenda-score {
+    font-size: 14px;
+  }
+  .agenda-time-box {
+    padding: 4px 8px;
+    margin: 0 12px; /* Garantiza separación para que no se encime */
+  }
+  .agenda-time-val {
+    font-size: 9px;
   }
 }
 
