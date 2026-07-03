@@ -13,7 +13,7 @@
   </style>
 </head>
 <body>
-  <video id="v" playsinline autoplay controls></video>
+  <video id="v" playsinline controls></video>
   <div id="dbg-wrap">
     <textarea id="dbg" readonly></textarea>
     <button id="dbg-copy">📋 COPIAR LOG</button>
@@ -54,6 +54,8 @@
         window.parent.postMessage({ type: 'player-frame-error' }, '*');
         return;
       }
+      // Cancel any pending autoplay play() — calling play() on rs=0 triggers MEDIA_ERR_DECODE
+      video.pause();
       reloadInProgress = true;
       reloadAttempts++;
       log('[reload] emptied #' + reloadAttempts);
@@ -82,7 +84,7 @@
         }
       };
 
-      setTimeout(doReload, 100);
+      doReload();
     });
 
     async function startPlayer(cfg) {
