@@ -17,12 +17,53 @@
     import { createIOSDecryptor } from './js/modules/ios-cenc-decryptor.js';
 
     const video = document.getElementById('v');
+    let player = null;
+    let manifest = null;
+    let reloadInProgress = false;
+    let reloadAttempts = 0;
+
+    video.addEventListener('playing', () => { reloadAttempts = 0; });
+
+    video.addEventListener('emptied', () => {
+      if (reloadInProgress || !player || !manifest) return;
+      if (reloadAttempts >= 5) {
+        window.parent.postMessage({ type: 'player-frame-error' }, '*');
+        return;
+      }
+      reloadInProgress = true;
+      reloadAttempts++;
+
+      const doReload = async () => {
+        if (video.readyState >= 3) { reloadInProgress = false; return; }
+        try {
+          await player.load(manifest);
+          if (video.readyState >= 3) {
+            video.play().catch(() => {});
+          } else {
+            video.addEventListener('canplay', () => { video.play().catch(() => {}); }, { once: true });
+          }
+        } catch (e) {
+          if (reloadAttempts < 5) {
+            reloadAttempts++;
+            setTimeout(doReload, 500);
+            return;
+          }
+          window.parent.postMessage({ type: 'player-frame-error' }, '*');
+        } finally {
+          reloadInProgress = false;
+        }
+      };
+
+      setTimeout(doReload, 100);
+    });
 
     async function startPlayer(cfg) {
+      manifest = cfg.manifest;
+
       shaka.polyfill.installAll();
       if (window.ManagedMediaSource) video.disableRemotePlayback = true;
 
-      const player = new shaka.Player(video);
+      player = new shaka.Player(video);
       const decryptor = await createIOSDecryptor(cfg.key);
       const net = player.getNetworkingEngine();
 
@@ -52,20 +93,25 @@
         streaming: { bufferingGoal: 20, rebufferingGoal: 10, lowLatencyMode: false }
       });
 
+      player.addEventListener('error', (event) => {
+        if (event.detail.severity !== 2 || reloadInProgress) return;
+        setTimeout(() => {
+          if (!reloadInProgress) player.retryStreaming();
+        }, 500);
+      });
+
       try {
-        await player.load(cfg.manifest);
+        await player.load(manifest);
         video.play().catch(() => {});
       } catch (e) {
         window.parent.postMessage({ type: 'player-frame-error' }, '*');
       }
     }
 
-    // Receive config from parent via postMessage
     window.addEventListener('message', ({ data }) => {
       if (data?.type === 'player-frame-init') startPlayer(data.config);
     });
 
-    // Signal parent that we're ready to receive config
     window.parent.postMessage({ type: 'player-frame-ready' }, '*');
   </script>
 </body>
