@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+    video { width: 100%; height: 100%; object-fit: contain; display: block; }
+  </style>
+</head>
+<body>
+  <video id="v" playsinline autoplay controls></video>
+
+  <script src="https://cdn.jsdelivr.net/npm/shaka-player@5.0.5/dist/shaka-player.compiled.min.js"></script>
+  <script type="module">
+    import { createIOSDecryptor } from './js/modules/ios-cenc-decryptor.js';
+
+    const video = document.getElementById('v');
+
+    async function startPlayer(cfg) {
+      shaka.polyfill.installAll();
+      if (window.ManagedMediaSource) video.disableRemotePlayback = true;
+
+      const player = new shaka.Player(video);
+      const decryptor = await createIOSDecryptor(cfg.key);
+      const net = player.getNetworkingEngine();
+
+      net.registerResponseFilter((type, response) => {
+        if (type !== shaka.net.NetworkingEngine.RequestType.MANIFEST) return;
+        const xml = new TextDecoder().decode(new Uint8Array(response.data));
+        response.data = new TextEncoder().encode(
+          xml.replace(/<ContentProtection\b[^>]*\/>/g, '')
+             .replace(/<ContentProtection\b[\s\S]*?<\/ContentProtection>/g, '')
+        ).buffer;
+      });
+
+      net.registerResponseFilter(async (type, response) => {
+        if (type !== shaka.net.NetworkingEngine.RequestType.SEGMENT) return;
+        const bytes = new Uint8Array(response.data);
+        const box = bytes.length >= 8
+          ? String.fromCharCode(bytes[4], bytes[5], bytes[6], bytes[7]) : '';
+        if (box === 'ftyp' || box === 'moov') {
+          response.data = decryptor.transformInit(response.data);
+        } else {
+          response.data = await decryptor.decryptMedia(response.data);
+        }
+      });
+
+      player.configure({
+        manifest: { dash: { clockSyncUri: '' } },
+        streaming: { bufferingGoal: 20, rebufferingGoal: 10, lowLatencyMode: false }
+      });
+
+      try {
+        await player.load(cfg.manifest);
+        video.play().catch(() => {});
+      } catch (e) {
+        window.parent.postMessage({ type: 'player-frame-error' }, '*');
+      }
+    }
+
+    // Receive config from parent via postMessage
+    window.addEventListener('message', ({ data }) => {
+      if (data?.type === 'player-frame-init') startPlayer(data.config);
+    });
+
+    // Signal parent that we're ready to receive config
+    window.parent.postMessage({ type: 'player-frame-ready' }, '*');
+  </script>
+</body>
+</html>

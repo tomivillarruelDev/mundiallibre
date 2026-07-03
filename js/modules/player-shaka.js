@@ -102,15 +102,41 @@ export async function initPlayer(activeConfig, video, playerControls, centerPlay
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
         || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-    // iOS: ManagedMediaSource is too unstable for production (destroys itself on scroll).
-    // Use iframe directly — same stream, same keys, same quality, just a different player.
+    // iOS: ManagedMediaSource is destroyed by scroll when the video lives in the main document.
+    // Fix: host Shaka inside an iframe — the iframe's document is isolated from the parent
+    // scroll, so iOS doesn't destroy its ManagedMediaSource during scroll.
     if (isIOS) {
         hasFallenBack = true;
         video.style.display = "none";
         playerControls.style.display = "none";
         centerPlayHud.style.display = "none";
-        iframeFallback.style.display = "block";
-        iframeFallback.src = activeConfig.iframeUrl;
+
+        const frame = document.createElement('iframe');
+        frame.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
+        frame.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:none;background:#000;';
+
+        // Player container needs relative positioning for the absolute iframe
+        const playerContainer = video.closest('#player-container') || video.parentElement;
+        playerContainer.style.position = 'relative';
+        playerContainer.appendChild(frame);
+
+        // Send config when the frame signals it's ready; fall back to external on error
+        window.addEventListener('message', ({ data }) => {
+            if (data?.type === 'player-frame-ready') {
+                frame.contentWindow.postMessage(
+                    { type: 'player-frame-init', config: activeConfig },
+                    location.origin
+                );
+            }
+            if (data?.type === 'player-frame-error') {
+                // Our player failed — fall back to external iframe (with ads)
+                frame.src = activeConfig.iframeUrl;
+            }
+        });
+
+        // Load our own player page (same origin = no sandbox restrictions)
+        frame.src = '/player-frame.html';
+
         hideLoader(loader);
         return;
     }
