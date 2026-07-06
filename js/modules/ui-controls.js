@@ -1,6 +1,6 @@
 /* ui-controls.js - Video Player User Interface Controls Handler */
 
-import { shakaPlayer, hasFallenBack, shakaReady } from "./player-shaka.js?v=111";
+import { shakaPlayer, hasFallenBack, shakaReady } from "./player-shaka.js?v=112";
 
 /**
  * Formats time in seconds to HH:MM:SS or MM:SS format

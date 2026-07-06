@@ -1,6 +1,6 @@
 /* live-scores.js - Dynamic metadata loading and ESPN score API tracker */
 
-import { triggerGoalCelebration } from "./animations.js?v=111";
+import { triggerGoalCelebration } from "./animations.js?v=112";
 
 let prevHomeScore = null;
 let prevAwayScore = null;
@@ -17,6 +17,7 @@ let cachedHomeShootout = [];
 let cachedAwayShootout = [];
 let lastStatsCache = "";
 let lastAgendaCache = "";
+let lastMatchDetail = "";
 
 let lastBracketFetchTime = 0;
 let cachedBracketEvents = [];
@@ -259,16 +260,19 @@ export async function detectLiveMatch(urlTitle) {
     const currentHomeInt = parseInt(homeScore, 10) || 0;
     const currentAwayInt = parseInt(awayScore, 10) || 0;
 
+    let forceSummaryFetch = false;
+
     if (prevHomeScore !== null && prevAwayScore !== null) {
       if (currentHomeInt > prevHomeScore || currentAwayInt > prevAwayScore) {
         triggerGoalCelebration();
+        forceSummaryFetch = true; // Force immediate update of stats below
       }
     }
 
     prevHomeScore = currentHomeInt;
     prevAwayScore = currentAwayInt;
 
-    // Fetch detailed match summary for goals and cards (throttled to once every 30s)
+    // Fetch detailed match summary for goals and cards (throttled to once every 15s)
     const homeId = homeCompetitor?.id;
     const awayId = awayCompetitor?.id;
 
@@ -276,15 +280,24 @@ export async function detectLiveMatch(urlTitle) {
     if (activeLiveEvent.id !== lastCachedMatchId) {
       lastCachedMatchId = activeLiveEvent.id;
       lastSummaryFetchTime = 0;
+      lastMatchDetail = "";
       cachedHomeEvents = [];
       cachedAwayEvents = [];
       cachedHomeShootout = [];
       cachedAwayShootout = [];
     }
 
+    // Force refetch if match detail/status changed (e.g. HT, ET, Pens, started)
+    const currentMatchDetail = activeLiveEvent.status?.type?.detail || "";
+    if (currentMatchDetail !== lastMatchDetail) {
+      lastMatchDetail = currentMatchDetail;
+      forceSummaryFetch = true;
+    }
+
     const nowTime = Date.now();
     if (
-      nowTime - lastSummaryFetchTime >= 30000 ||
+      forceSummaryFetch ||
+      nowTime - lastSummaryFetchTime >= 15000 ||
       (cachedHomeEvents.length === 0 && cachedAwayEvents.length === 0)
     ) {
       try {

@@ -1,13 +1,13 @@
 /* main.js - Orchestration Entry Point for MundialLibre Web App */
 
-import { ENCRYPTED_TOKEN, decrypt } from "./modules/security.js?v=111";
+import { ENCRYPTED_TOKEN, decrypt } from "./modules/security.js?v=112";
 import {
   playIntroAnimations,
   triggerGoalCelebration,
-} from "./modules/animations.js?v=111";
-import { loadMatchMetadata } from "./modules/live-scores.js?v=111";
-import { initPlayer } from "./modules/player-shaka.js?v=111";
-import { setupUIControls } from "./modules/ui-controls.js?v=111";
+} from "./modules/animations.js?v=112";
+import { loadMatchMetadata } from "./modules/live-scores.js?v=112";
+import { initPlayer } from "./modules/player-shaka.js?v=112";
+import { setupUIControls } from "./modules/ui-controls.js?v=112";
 
 document.addEventListener("DOMContentLoaded", () => {
   const startApp = () => {
