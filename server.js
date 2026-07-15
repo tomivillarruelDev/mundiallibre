@@ -14,6 +14,7 @@ const MIME_TYPES = {
     '.json': 'application/json',
     '.png': 'image/png',
     '.jpg': 'image/jpeg',
+    '.webp': 'image/webp',
     '.gif': 'image/gif',
     '.svg': 'image/svg+xml',
     '.ico': 'image/x-icon'
@@ -52,13 +53,21 @@ const server = http.createServer((req, res) => {
         } else {
             const headers = { 'Content-Type': contentType };
 
-            // Configurar políticas de Cache-Control por tipo de archivo para optimizar cargas
-            if (ext === '.html' || ext === '.json') {
-                // HTML y JSON: forzar re-validación siempre
-                headers['Cache-Control'] = 'no-cache, must-revalidate';
-            } else if (['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico'].includes(ext)) {
-                // Recursos estáticos (CSS, JS, Imágenes, Iconos): cachear agresivamente por 7 días
-                headers['Cache-Control'] = 'public, max-age=604800, immutable';
+            // Cache-Control: espeja la config de vercel.json para consistencia local/prod
+            if (ext === '.html' || safeUrl === '/') {
+                headers['Cache-Control'] = 'no-store, no-cache, must-revalidate';
+            } else if (safeUrl === '/match.json') {
+                // Métricas en vivo del partido: nunca cachear
+                headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, proxy-revalidate';
+                headers['Pragma'] = 'no-cache';
+            } else if (safeUrl === '/sitemap.xml') {
+                headers['Cache-Control'] = 'public, max-age=3600';
+            } else if (ext === '.json' || safeUrl === '/robots.txt') {
+                // manifest.json, robots.txt: 1 día
+                headers['Cache-Control'] = 'public, max-age=86400';
+            } else if (['.css', '.js', '.webp', '.png', '.gif', '.svg'].includes(ext)) {
+                // Assets versionados e imágenes: 1 año inmutable
+                headers['Cache-Control'] = 'public, max-age=31536000, immutable';
             } else {
                 headers['Cache-Control'] = 'public, max-age=86400';
             }
