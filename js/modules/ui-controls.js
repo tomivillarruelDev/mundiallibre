@@ -293,12 +293,18 @@ export function setupUIControls(elements) {
   qualityBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     if (!hasFallenBack) {
-      qualityMenu.classList.toggle("active");
+      const isActive = qualityMenu.classList.toggle("active");
+      if (isActive) {
+        playerContainer.classList.add("has-open-menu");
+      } else {
+        playerContainer.classList.remove("has-open-menu");
+      }
     }
   });
 
   document.addEventListener("click", () => {
     qualityMenu.classList.remove("active");
+    playerContainer.classList.remove("has-open-menu");
   });
 
   // Quality Variant Selection

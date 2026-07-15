@@ -283,6 +283,15 @@ body {
   border: 1px solid var(--color-border);
 }
 
+.player-wrapper.has-open-menu {
+  overflow: visible !important;
+  contain: none !important;
+}
+
+.player-wrapper.has-open-menu .custom-player-controls {
+  contain: none !important;
+}
+
 .player-wrapper video {
   width: 100%;
   height: 100%;
@@ -896,6 +905,20 @@ body {
 
   .signal-desc {
     font-size: 16px;
+  }
+
+  .quality-menu {
+    bottom: calc(100% + 8px);
+    right: -10px;
+    width: 120px;
+    padding: 4px;
+    max-height: 110px;
+    overflow-y: auto;
+  }
+
+  .quality-option {
+    padding: 6px 8px;
+    font-size: 10px;
   }
 }
 
