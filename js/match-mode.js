@@ -187,7 +187,7 @@ const ARGENTINA_MATCH_MODE = true;
     const content = `
       <div class="match-ticker-item">${flag} &nbsp; <span class="ticker-dorado">VAMOS SELECCIÓN</span></div>
       <div class="match-ticker-item"><span>•</span> EDICIÓN ESPECIAL ARGENTINA</div>
-      <div class="match-ticker-item"><span>•</span> ${flag} &nbsp; TODOS LOS CANALES EN VIVO EN HD</div>
+      <div class="match-ticker-item"><span>•</span><span class="ticker-dorado">MUCHACHOOOS</span></div>
       <div class="match-ticker-item"><span>•</span> EL SENTIMIENTO DE UN PAÍS</div>
       <div class="match-ticker-item"><span>•</span> ${flag} &nbsp; <span class="ticker-dorado">TRANSMISIÓN PREMIUM BAJA LATENCIA</span></div>
     `;
@@ -222,25 +222,58 @@ const ARGENTINA_MATCH_MODE = true;
 
     let banderinesHTML = "";
     for (let i = 0; i < count; i++) {
-      // SVG de banderín triangular de estadio argentino estilizado
+      // Banderines de cristal translúcidos con mayor vivacidad y Sol de Mayo estilizado
       banderinesHTML += `
         <svg class="match-garland-svg-item" width="20" height="28" viewBox="0 0 20 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="
           flex-shrink: 0;
-          animation: match-swing ${3.2 + (i % 3) * 0.9}s ease-in-out infinite alternate;
+          animation: match-swing ${3.4 + (i % 3) * 0.9}s ease-in-out infinite alternate;
           animation-delay: ${(i % 6) * 0.15}s;
           transform-origin: top center;
-          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35));
+          filter: drop-shadow(0 3px 5px rgba(0,0,0,0.3));
         ">
-          <!-- Franja celeste superior -->
-          <path d="M0 0H20V9.33H0V0Z" fill="#6EC6FF"/>
-          <!-- Franja blanca media -->
-          <path d="M0 9.33H20V18.66H0V9.33Z" fill="#FFFFFF"/>
-          <!-- Franja celeste inferior en punta -->
-          <path d="M0 18.66H20L10 28L0 18.66Z" fill="#6EC6FF"/>
-          <!-- Sol de Mayo -->
-          <circle cx="10" cy="14" r="2" fill="#D4AF37" stroke="#9A7B1C" stroke-width="0.4"/>
+          <defs>
+            <!-- Celeste Acero Vívido de Cristal -->
+            <linearGradient id="celesteGrad-${i}" x1="0" y1="0" x2="20" y2="28" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="rgba(78, 172, 252, 0.72)"/>
+              <stop offset="50%" stop-color="rgba(122, 213, 255, 0.8)"/>
+              <stop offset="100%" stop-color="rgba(50, 142, 227, 0.65)"/>
+            </linearGradient>
+            <!-- Blanco Seda Vívido de Cristal -->
+            <linearGradient id="blancoGrad-${i}" x1="0" y1="9" x2="20" y2="18" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="rgba(255, 255, 255, 0.85)"/>
+              <stop offset="60%" stop-color="rgba(242, 246, 250, 0.75)"/>
+              <stop offset="100%" stop-color="rgba(221, 227, 235, 0.6)"/>
+            </linearGradient>
+            <!-- Sombra de Pliegues 3D -->
+            <linearGradient id="foldGrad-${i}" x1="0" y1="0" x2="20" y2="0" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#000000" stop-opacity="0.18"/>
+              <stop offset="35%" stop-color="#000000" stop-opacity="0"/>
+              <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.1"/>
+              <stop offset="100%" stop-color="#000000" stop-opacity="0.22"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Banderín (Triangular) -->
+          <path d="M0 0H20V9.33H0V0Z" fill="url(#celesteGrad-${i})"/>
+          <path d="M0 9.33H20V18.66H0V9.33Z" fill="url(#blancoGrad-${i})"/>
+          <path d="M0 18.66H20L10 28L0 18.66Z" fill="url(#celesteGrad-${i})"/>
+
+          <!-- Sombra de pliegue multiplicada -->
+          <path d="M0 0H20L10 28L0 0Z" fill="url(#foldGrad-${i})" style="mix-blend-mode: multiply; opacity: 0.8;"/>
+
+          <!-- Sol de Mayo premium sutil -->
+          <g transform="translate(10, 14)" style="opacity: 0.82;">
+            <!-- Rayos del Sol -->
+            <path d="M-0.3 -3.5H0.3V3.5H-0.3Z" fill="#D4AF37"/>
+            <path d="M-3.5 -0.3H3.5V0.3H-3.5Z" fill="#D4AF37"/>
+            <path d="M-2.5 -2.5L2.5 2.5" stroke="#D4AF37" stroke-width="0.5"/>
+            <path d="M-2.5 2.5L2.5 -2.5" stroke="#D4AF37" stroke-width="0.5"/>
+            <!-- Centro del Sol -->
+            <circle cx="0" cy="0" r="1.5" fill="#FFEAA7" stroke="#9A7B1C" stroke-width="0.25"/>
+          </g>
+
           <!-- Hilo superior -->
-          <line x1="0" y1="0.5" x2="20" y2="0.5" stroke="#FFFFFF" stroke-opacity="0.4"/>
+          <line x1="0" y1="0.5" x2="20" y2="0.5" stroke="#FFFFFF" stroke-opacity="0.3" stroke-width="1"/>
         </svg>
       `;
     }

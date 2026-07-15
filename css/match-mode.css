@@ -16,6 +16,16 @@ body.argentina-match-mode {
   transition: background-color 0.8s ease;
 }
 
+/* Adaptación del Navbar original al Modo Partido */
+body.argentina-match-mode .app-header {
+  background: rgba(6, 14, 23, 0.75) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-bottom: 1px solid rgba(110, 198, 255, 0.22) !important;
+  box-shadow: 0 4px 30px rgba(6, 14, 23, 0.4),
+              0 1px 15px rgba(110, 198, 255, 0.05) !important;
+}
+
 @keyframes match-swing {
   0% { transform: rotate(-2.5deg); }
   100% { transform: rotate(2.5deg); }
@@ -145,7 +155,7 @@ body.argentina-match-mode {
   overflow: visible;
   z-index: 95; /* Pasa por detrás del ticker al hacer scroll */
   pointer-events: none;
-  opacity: 0.85;
+  opacity: 0.65; /* Incrementada la opacidad para mejorar visibilidad */
   display: flex;
   justify-content: center;
   gap: 8px;
@@ -717,7 +727,7 @@ body.argentina-match-mode {
    ========================================================================== */
 .match-players-row-section {
   width: 100%;
-  margin: 3rem 0;
+  margin: 4.8rem 0 3.8rem 0; /* Aumentado el aire vertical */
   position: relative;
   z-index: 2;
 }
@@ -728,7 +738,7 @@ body.argentina-match-mode {
   color: rgba(255, 255, 255, 0.4);
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  margin-bottom: 18px;
+  margin-bottom: 22px; /* Aumentado */
   text-align: center;
 }
 
@@ -736,7 +746,7 @@ body.argentina-match-mode {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 28px;
+  gap: 38px; /* Aumentado de 28px para que no estén juntos */
   flex-wrap: wrap;
 }
 
@@ -1047,7 +1057,7 @@ body.argentina-match-mode {
   .match-banner-subtitle { font-size: 1.15rem; }
   .match-quote-text { font-size: 1.35rem; }
   .match-players-avatars-container {
-    gap: 20px;
+    gap: 24px; /* Aumentado en responsive */
   }
   .match-player-avatar-img {
     width: 48px;

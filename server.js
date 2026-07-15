@@ -34,7 +34,10 @@ const server = http.createServer((req, res) => {
         if (error) {
             if (error.code === 'ENOENT') {
                 if (safeUrl === '/match.json') {
-                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.writeHead(200, { 
+                        'Content-Type': 'application/json; charset=utf-8',
+                        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+                    });
                     res.end(JSON.stringify({}), 'utf-8');
                     return;
                 }
@@ -47,7 +50,20 @@ const server = http.createServer((req, res) => {
                 res.end(`Error 500: Interno del servidor (${error.code})`);
             }
         } else {
-            res.writeHead(200, { 'Content-Type': contentType });
+            const headers = { 'Content-Type': contentType };
+
+            // Configurar políticas de Cache-Control por tipo de archivo para optimizar cargas
+            if (ext === '.html' || ext === '.json') {
+                // HTML y JSON: forzar re-validación siempre
+                headers['Cache-Control'] = 'no-cache, must-revalidate';
+            } else if (['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico'].includes(ext)) {
+                // Recursos estáticos (CSS, JS, Imágenes, Iconos): cachear agresivamente por 7 días
+                headers['Cache-Control'] = 'public, max-age=604800, immutable';
+            } else {
+                headers['Cache-Control'] = 'public, max-age=86400';
+            }
+
+            res.writeHead(200, headers);
             res.end(content, 'utf-8');
         }
     });
