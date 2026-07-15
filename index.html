@@ -135,6 +135,10 @@
     <!-- CSS Stylesheet -->
     <link rel="preload" href="/css/style.css?v=112" as="style" />
     <link rel="stylesheet" href="/css/style.css?v=112" fetchpriority="high" />
+    <link id="match-mode-styles-link" rel="stylesheet" href="/css/match-mode.css" />
+    <script>
+      window.ARGENTINA_MATCH_MODE = true;
+    </script>
 
     <!-- Favicon -->
     <link rel="icon" type="image/webp" sizes="32x32" href="/favicon.webp" />
@@ -167,6 +171,11 @@
       src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   </head>
   <body>
+    <script>
+      if (window.ARGENTINA_MATCH_MODE) {
+        document.body.classList.add("argentina-match-mode");
+      }
+    </script>
     <!-- MODERN STICKY NAVBAR (full-width, outside app-container) -->
     <header class="app-header" id="app-navbar">
       <div class="navbar-inner">

@@ -1,7 +1,7 @@
 /* match-mode.js - Edición Especial Argentina para Mundial Libre (Premium & Humanizada) */
 
 // VARIABLE DE CONTROL PRINCIPAL (100% VISUAL)
-const ARGENTINA_MATCH_MODE = true;
+const ARGENTINA_MATCH_MODE = typeof window.ARGENTINA_MATCH_MODE !== 'undefined' ? window.ARGENTINA_MATCH_MODE : true;
 
 (function() {
   let confettiAnimationFrame = null;
