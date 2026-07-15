@@ -195,8 +195,8 @@ export async function detectLiveMatch(urlTitle) {
     const homeScore = homeCompetitor?.score ?? "0";
     const awayScore = awayCompetitor?.score ?? "0";
 
-    const homeLogo = homeCompetitor?.team?.logo || "assets/logo.svg";
-    const awayLogo = awayCompetitor?.team?.logo || "assets/logo.svg";
+    const homeLogo = homeCompetitor?.team?.logo || "assets/logo.webp";
+    const awayLogo = awayCompetitor?.team?.logo || "assets/logo.webp";
 
     const matchName = homeTeam && awayTeam ? `${homeTeam} vs ${awayTeam}` : activeLiveEvent.name;
     const leagueName = activeLeagueName || "Copa Mundial";
@@ -646,7 +646,7 @@ function updateAgendaUI(prevMatch, nextMatch) {
   if (agendaKey === lastAgendaCache) return;
   lastAgendaCache = agendaKey;
 
-  const logoFallback = "assets/logo.svg";
+  const logoFallback = "assets/logo.webp";
 
   // 1. Render Previous Match
   const prevCard = container.querySelector(".prev-match-card");
@@ -835,7 +835,7 @@ function renderMatchNode(ev, slot, isFinal = false) {
   slot.innerHTML = "";
 
   const soccerBallFallback = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-opacity='0.15' stroke-width='1.5'><circle cx='12' cy='12' r='10'/><polygon points='12,10 15.5,12.5 14.2,16.5 9.8,16.5 8.5,12.5' fill='%23ffffff' fill-opacity='0.08'/><line x1='12' y1='10' x2='12' y2='2'/><line x1='15.5' y1='12.5' x2='21.5' y2='9.5'/><line x1='14.2' y1='16.5' x2='18' y2='21.3'/><line x1='9.8' y1='16.5' x2='6' y2='21.3'/><line x1='8.5' y1='12.5' x2='2.5' y2='9.5'/></svg>";
-  const logoFallback = isFinal ? "assets/logo.svg" : soccerBallFallback;
+  const logoFallback = isFinal ? "assets/logo.webp" : soccerBallFallback;
   let homeName = "-";
   let awayName = "-";
   let homeLogo = logoFallback;
