@@ -274,6 +274,15 @@ body.argentina-match-mode .app-header {
   border-color: rgba(212, 175, 55, 0.35);
 }
 
+.match-hero-top-text {
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: var(--color-match-dorado);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
 .match-hero-title-container {
   position: relative;
   display: inline-block;
@@ -338,9 +347,36 @@ body.argentina-match-mode .app-header {
 }
 
 @media (max-width: 768px) {
-  .match-hero-title { font-size: 2.3rem; }
-  .match-hero-subtitle { font-size: 0.9rem; }
-  .match-hero-section { margin: 1.5rem 0 1rem 0; padding: 3rem 1rem; }
+  .match-bg-overlay {
+    background-image: 
+      linear-gradient(to bottom, #060e17 0%, rgba(6, 14, 23, 0.94) 40%, #060e17 100%),
+      radial-gradient(circle at 15% 20%, rgba(110, 198, 255, 0.015) 1.5px, transparent 1.5px),
+      radial-gradient(circle at 80% 35%, rgba(212, 175, 55, 0.01) 2px, transparent 2px),
+      radial-gradient(circle at 50% 75%, rgba(255, 255, 255, 0.015) 1.5px, transparent 1.5px),
+      linear-gradient(rgba(255, 255, 255, 0.002) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.002) 1px, transparent 1px);
+    background-size: cover, 500px 500px, 600px 600px, 450px 450px, 120px 120px, 120px 120px;
+    background-position: center center, center center, center center, center center, center center, center center;
+    background-repeat: no-repeat, repeat, repeat, repeat, repeat, repeat;
+    background-attachment: fixed, scroll, scroll, scroll, scroll, scroll;
+  }
+
+  .match-hero-section {
+    margin: 0.25rem 0;
+    padding: 0.5rem 1rem;
+  }
+
+  .match-hero-title {
+    font-size: 1.6rem;
+    margin: 0;
+    gap: 6px;
+  }
+
+  .match-hero-badges,
+  .match-hero-top-text,
+  .match-hero-subtitle {
+    display: none !important;
+  }
 }
 
 /* ==========================================================================

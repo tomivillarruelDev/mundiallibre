@@ -312,7 +312,7 @@ const ARGENTINA_MATCH_MODE = true;
         </span>
       </div>
       <div class="match-hero-title-container">
-        <div style="font-size:0.7rem; font-weight:900; color:var(--color-match-dorado); letter-spacing:0.25em; text-transform:uppercase; margin-bottom: 2px;">La ilusión vuelve a rodar</div>
+        <div class="match-hero-top-text">La ilusión vuelve a rodar</div>
         <h2 class="match-hero-title">VAMOS <span>ARGENTINA</span></h2>
         <div class="match-hero-stars">
           ${getStarSVG()}${getStarSVG()}${getStarSVG()}
