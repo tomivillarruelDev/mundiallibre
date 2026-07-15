@@ -376,10 +376,13 @@ const ARGENTINA_MATCH_MODE = true;
       </div>
     `;
 
-    // Ubicación: abajo de la descripción del canal (.signal-desc) y arriba de la agenda
-    const signalDesc = document.querySelector(".signal-desc");
-    if (signalDesc) {
-      signalDesc.parentNode.insertBefore(wrapper, signalDesc.nextSibling);
+    // Ubicación: debajo de las métricas (.match-section-divider), arriba de la agenda
+    const divider = document.querySelector(".match-section-divider");
+    const agendaContainer = document.querySelector(".matches-agenda-container");
+    if (divider) {
+      divider.parentNode.insertBefore(wrapper, divider.nextSibling);
+    } else if (agendaContainer) {
+      agendaContainer.parentNode.insertBefore(wrapper, agendaContainer);
     } else {
       const main = document.querySelector(".main-content");
       if (main) main.appendChild(wrapper);
