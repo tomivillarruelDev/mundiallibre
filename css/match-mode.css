@@ -1,0 +1,1088 @@
+/* match-mode.css - Edición Especial Argentina para Mundial Libre (Premium & Humanizada) */
+
+:root {
+  --color-match-celeste: #6EC6FF;
+  --color-match-celeste-light: #A7E2FF;
+  --color-match-dorado: #D4AF37;
+  --color-match-blue-dark: #0A192F;
+  --color-match-glass-border: rgba(110, 198, 255, 0.12);
+  --color-match-glass-bg: rgba(10, 25, 47, 0.55);
+}
+
+/* ==========================================================================
+   1. ACTIVACIÓN & ANIMACIONES GENERALES
+   ========================================================================== */
+body.argentina-match-mode {
+  transition: background-color 0.8s ease;
+}
+
+@keyframes match-swing {
+  0% { transform: rotate(-2.5deg); }
+  100% { transform: rotate(2.5deg); }
+}
+
+@keyframes match-marquee {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+@keyframes match-shine {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+@keyframes match-pulse-glow {
+  0%, 100% {
+    box-shadow: 0px 20px 50px rgba(110, 198, 255, 0.15),
+                0px 0px 100px 30px rgba(167, 226, 255, 0.05),
+                0px 0px 180px 60px rgba(110, 198, 255, 0.02);
+  }
+  50% {
+    box-shadow: 0px 20px 70px rgba(110, 198, 255, 0.28),
+                0px 0px 130px 45px rgba(167, 226, 255, 0.1),
+                0px 0px 210px 75px rgba(110, 198, 255, 0.04);
+  }
+}
+
+@keyframes match-star-glow {
+  0%, 100% { opacity: 0.35; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* Reducción de movimiento */
+@media (prefers-reduced-motion: reduce) {
+  .argentina-match-mode * {
+    animation-delay: 0s !important;
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
+    transform: none !important;
+  }
+}
+
+/* ==========================================================================
+   2. CONTENEDOR STICKY TICKER
+   ========================================================================== */
+.match-sticky-header-group {
+  position: sticky;
+  top: 64px;
+  left: 0;
+  width: 100%;
+  z-index: 99;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.match-ticker-bar {
+  position: relative;
+  width: 100%;
+  height: 38px;
+  background: linear-gradient(135deg, rgba(10, 25, 47, 0.85), rgba(27, 73, 101, 0.85));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--color-match-glass-border);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  pointer-events: auto;
+}
+
+.match-ticker-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  transform: skewX(-25deg);
+  animation: match-shine 7s infinite linear;
+  pointer-events: none;
+}
+
+.match-ticker-track {
+  display: flex;
+  white-space: nowrap;
+  animation: match-marquee 32s infinite linear;
+}
+
+.match-ticker-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 2rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-primary);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.match-ticker-item span {
+  color: var(--color-match-celeste);
+  margin: 0 0.5rem;
+}
+
+.match-ticker-item span.ticker-dorado {
+  color: var(--color-match-dorado);
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.45);
+}
+
+
+/* ==========================================================================
+   3. GUIRNALDA SUPERIOR (NO-STICKY)
+   ========================================================================== */
+.match-garland-container {
+  position: absolute;
+  top: 102px; /* Justo debajo del ticker bar en reposo */
+  left: 0;
+  width: 100%;
+  height: 40px;
+  overflow: visible;
+  z-index: 95; /* Pasa por detrás del ticker al hacer scroll */
+  pointer-events: none;
+  opacity: 0.85;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* ==========================================================================
+   4. FONDO CON TEXTURA DEPORTIVA SUTIL & PARED DE HÉROES FIJA
+   ========================================================================== */
+.match-bg-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* Capas de fondo: 
+     1. Máscara de degradado oscuro
+     2. Lineup de Héroes fijo
+     3. Textura de cancha y estrellas sutiles */
+  background-image: 
+    linear-gradient(to bottom, #060e17 0%, rgba(6, 14, 23, 0.94) 40%, #060e17 100%),
+    url('/assets/heroes_lineup.jpg'),
+    radial-gradient(circle at 15% 20%, rgba(110, 198, 255, 0.015) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 80% 35%, rgba(212, 175, 55, 0.01) 2px, transparent 2px),
+    radial-gradient(circle at 50% 75%, rgba(255, 255, 255, 0.015) 1.5px, transparent 1.5px),
+    linear-gradient(rgba(255, 255, 255, 0.002) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.002) 1px, transparent 1px);
+  background-size: cover, cover, 500px 500px, 600px 600px, 450px 450px, 120px 120px, 120px 120px;
+  background-position: center center, center 28%, center center, center center, center center, center center, center center;
+  background-repeat: no-repeat, no-repeat, repeat, repeat, repeat, repeat, repeat;
+  background-attachment: fixed, fixed, scroll, scroll, scroll, scroll, scroll;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.95;
+}
+
+/* ==========================================================================
+   5. CONFETTI CANVAS SUTIL
+   ========================================================================== */
+.match-confetti-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ==========================================================================
+   6. HERO ARGENTINA Y PARED DE HÉROES
+   ========================================================================== */
+.match-hero-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin: 1.5rem 0 0.5rem 0;
+  position: relative;
+  z-index: 2;
+  padding: 2rem 1rem;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+
+.match-hero-badges {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.match-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 100px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.match-badge-live {
+  background: rgba(255, 59, 48, 0.15);
+  color: #ff453a;
+  border-color: rgba(255, 59, 48, 0.25);
+}
+
+.match-badge-live .live-dot-pulse {
+  width: 6px;
+  height: 6px;
+  background-color: #ff453a;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #ff453a;
+  animation: match-star-glow 1.5s infinite;
+}
+
+.match-badge-albiceleste {
+  background: linear-gradient(135deg, rgba(110, 198, 255, 0.15) 0%, rgba(255, 255, 255, 0.1) 100%);
+  color: #FFFFFF;
+  border-color: rgba(167, 226, 255, 0.35);
+}
+
+.match-badge-dorado {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(10, 25, 47, 0.5) 100%);
+  color: #ffe485;
+  border-color: rgba(212, 175, 55, 0.35);
+}
+
+.match-hero-title-container {
+  position: relative;
+  display: inline-block;
+}
+
+.match-hero-title {
+  font-family: var(--font-display);
+  font-size: 3.8rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  text-transform: uppercase;
+  margin: 0;
+  line-height: 1;
+  text-shadow: 
+    0 0 25px rgba(110, 198, 255, 0.35),
+    0 4px 10px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.match-hero-title span {
+  color: var(--color-match-celeste);
+  background: linear-gradient(180deg, #ffffff 40%, var(--color-match-celeste) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.match-hero-stars {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.match-star-svg {
+  width: 13px;
+  height: 13px;
+  fill: var(--color-match-dorado);
+  filter: drop-shadow(0 0 4px rgba(212,175,55,0.5));
+  animation: match-star-glow 3.5s infinite ease-in-out;
+}
+
+.match-star-svg:nth-child(2) {
+  animation-delay: 0.6s;
+  width: 15px;
+  height: 15px;
+}
+.match-star-svg:nth-child(3) {
+  animation-delay: 1.2s;
+}
+
+.match-hero-subtitle {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--color-match-celeste-light);
+  margin-top: 12px;
+  opacity: 0.85;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 768px) {
+  .match-hero-title { font-size: 2.3rem; }
+  .match-hero-subtitle { font-size: 0.9rem; }
+  .match-hero-section { margin: 1.5rem 0 1rem 0; padding: 3rem 1rem; }
+}
+
+/* ==========================================================================
+   7. GLOW DEL REPRODUCTOR (CELESTE LED PREMIUM)
+   ========================================================================== */
+.argentina-match-mode .player-glow-backdrop {
+  background: transparent;
+  box-shadow:
+    0px 20px 50px rgba(110, 198, 255, 0.15),
+    0px 0px 100px 30px rgba(167, 226, 255, 0.05),
+    0px 0px 180px 60px rgba(110, 198, 255, 0.02);
+  animation: match-pulse-glow 9s infinite ease-in-out;
+}
+
+/* ==========================================================================
+   8. LAYOUT PREVIA (BAJO EL REPRODUCTOR)
+   ========================================================================== */
+.match-previa-section {
+  width: 100%;
+  margin-top: 2.5rem;
+  margin-bottom: 2rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: stretch;
+  position: relative;
+  z-index: 2;
+}
+
+/* Afiche Muchachos (Izquierda) */
+.match-banner-card {
+  background: linear-gradient(135deg, rgba(10, 25, 47, 0.7), rgba(15, 37, 66, 0.45));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--color-match-glass-border);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.35);
+}
+
+.match-banner-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at top right, rgba(110, 198, 255, 0.05), transparent 60%);
+  pointer-events: none;
+}
+
+.match-banner-decor-line {
+  width: 50px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-match-celeste), transparent);
+  margin-bottom: 1.2rem;
+}
+
+.match-banner-title {
+  font-family: var(--font-display);
+  font-size: 2.8rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+  text-transform: uppercase;
+  line-height: 1;
+  text-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+.match-banner-subtitle {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--color-match-celeste);
+  text-transform: uppercase;
+  margin-top: 8px;
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.match-banner-desc {
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  margin-top: 15px;
+  max-width: 90%;
+  line-height: 1.5;
+}
+
+.match-banner-footer {
+  margin-top: 2rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.match-banner-footer::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-match-dorado);
+  box-shadow: 0 0 8px var(--color-match-dorado);
+}
+
+/* Columna Derecha (Tarjeta del Partido + Panel Previa + Panel Plantel) */
+.match-right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Tarjeta del Partido */
+.match-card-vs {
+  background: linear-gradient(135deg, rgba(10, 25, 47, 0.75), rgba(27, 73, 101, 0.5));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(110, 198, 255, 0.2);
+  border-radius: var(--radius-lg);
+  padding: 1.8rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+
+.match-vs-header {
+  font-size: 0.65rem;
+  font-weight: 900;
+  color: var(--color-match-dorado);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  padding-bottom: 4px;
+  width: 60%;
+}
+
+.match-teams-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  margin: 8px 0;
+}
+
+.match-team-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.match-team-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #FFFFFF;
+  text-transform: uppercase;
+}
+
+.match-vs-divider {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: rgba(255,255,255,0.25);
+  font-style: italic;
+}
+
+.match-vs-footer {
+  margin-top: 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-match-celeste-light);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(110, 198, 255, 0.08);
+  padding: 4px 16px;
+  border-radius: 100px;
+  border: 1px solid rgba(110, 198, 255, 0.15);
+}
+
+/* Panel La Previa */
+.match-previa-card {
+  background: rgba(10, 25, 47, 0.5);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  padding: 1.4rem 1.8rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.match-previa-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.match-previa-title::before {
+  content: '';
+  width: 4px;
+  height: 12px;
+  background-color: var(--color-match-celeste);
+  border-radius: 2px;
+}
+
+.match-previa-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.match-previa-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.match-previa-item svg {
+  color: var(--color-match-celeste);
+  flex-shrink: 0;
+}
+
+/* Panel Plantel / Equipo */
+.match-team-card {
+  background: rgba(10, 25, 47, 0.5);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  padding: 1.4rem 1.8rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.match-team-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.match-team-title::before {
+  content: '';
+  width: 4px;
+  height: 12px;
+  background-color: var(--color-match-dorado);
+  border-radius: 2px;
+}
+
+.match-team-names-wrap {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+}
+
+.match-team-names-wrap span {
+  color: var(--color-match-celeste-light);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   9. SEPARADORES DE TRANSMISIÓN DEPORTIVA
+   ========================================================================== */
+.match-section-divider-sport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 3.5rem 0;
+  width: 100%;
+  position: relative;
+  z-index: 2;
+}
+
+.match-divider-line-sport {
+  flex: 1;
+  max-width: 250px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+}
+
+.match-divider-line-sport:first-child {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06));
+}
+
+.match-divider-line-sport:last-child {
+  background: linear-gradient(90deg, rgba(255,255,255,0.06), transparent);
+}
+
+/* ==========================================================================
+   10. FRASE DESTACADA (ENTRE SECCIONES)
+   ========================================================================== */
+.match-quote-container {
+  width: 100%;
+  margin: 3.5rem 0;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  padding: 1rem 0;
+}
+
+.match-quote-line {
+  max-width: 500px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+  margin: 0 auto;
+}
+
+.match-quote-text {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 300;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.75);
+  font-style: italic;
+  margin: 1.8rem 0;
+  letter-spacing: 0.01em;
+  position: relative;
+  display: inline-block;
+  padding: 0 2.5rem;
+}
+
+.match-quote-text::before,
+.match-quote-text::after {
+  font-size: 3rem;
+  color: var(--color-match-celeste);
+  opacity: 0.15;
+  position: absolute;
+  top: -15px;
+  font-family: Georgia, serif;
+}
+
+.match-quote-text::before {
+  content: '“';
+  left: 0;
+}
+
+.match-quote-text::after {
+  content: '”';
+  right: 0;
+}
+
+.match-quote-author {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-match-dorado);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-top: -0.5rem;
+  opacity: 0.85;
+}
+
+/* ==========================================================================
+   11. CINTA DE FIGURAS (AVATARES CIRCULARES)
+   ========================================================================== */
+.match-players-row-section {
+  width: 100%;
+  margin: 3rem 0;
+  position: relative;
+  z-index: 2;
+}
+
+.match-players-row-title {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+  text-align: center;
+}
+
+.match-players-avatars-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.match-player-avatar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.match-player-avatar-item:hover {
+  transform: translateY(-4px) scale(1.06);
+}
+
+.match-player-avatar-img {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 2px solid rgba(167, 226, 255, 0.3);
+  object-fit: cover;
+  box-shadow: 0 4px 10px rgba(110, 198, 255, 0.1);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.match-player-avatar-item:hover .match-player-avatar-img {
+  border-color: var(--color-match-dorado);
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.35);
+}
+
+.match-player-avatar-name {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+  transition: color 0.3s ease;
+}
+
+.match-player-avatar-item:hover .match-player-avatar-name {
+  color: #FFFFFF;
+}
+
+/* ==========================================================================
+   12. FRANSA "LA SCALONETA"
+   ========================================================================== */
+.match-scaloneta-bar {
+  width: 100%;
+  padding: 1.8rem 2rem;
+  background: linear-gradient(90deg, rgba(10, 25, 47, 0.7) 0%, rgba(27, 73, 101, 0.45) 50%, rgba(10, 25, 47, 0.7) 100%);
+  border-top: 1px solid var(--color-match-glass-border);
+  border-bottom: 1px solid var(--color-match-glass-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  margin: 3.5rem 0;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+}
+
+.match-scaloneta-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #FFFFFF;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.match-scaloneta-desc {
+  font-size: 0.85rem;
+  color: var(--color-match-celeste-light);
+  opacity: 0.95;
+  letter-spacing: 0.03em;
+}
+
+/* ==========================================================================
+   13. TARJETAS DE PROTAGONISTAS
+   ========================================================================== */
+.match-protagonists-section {
+  margin: 3.5rem 0;
+  width: 100%;
+  position: relative;
+  z-index: 2;
+}
+
+.match-protagonists-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #FFFFFF;
+  text-transform: uppercase;
+  margin-bottom: 1.8rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.match-protagonists-title::before {
+  content: '';
+  width: 4px;
+  height: 16px;
+  background-color: var(--color-match-dorado);
+  border-radius: 2px;
+}
+
+.match-protagonists-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.match-protagonist-card {
+  background: rgba(10, 25, 47, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--color-match-glass-border);
+  border-radius: var(--radius-md);
+  padding: 1.8rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.3s ease;
+}
+
+.match-protagonist-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 15px 35px rgba(110, 198, 255, 0.15);
+  border-color: rgba(110, 198, 255, 0.35);
+}
+
+.match-protagonist-img {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(167, 226, 255, 0.3);
+  margin-bottom: 1.2rem;
+  box-shadow: 0 0 15px rgba(110, 198, 255, 0.1);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.match-protagonist-card:hover .match-protagonist-img {
+  border-color: var(--color-match-dorado);
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+}
+
+.match-protagonist-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  margin-bottom: 4px;
+}
+
+.match-protagonist-role {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-match-dorado);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+
+.match-protagonist-quote {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  font-style: italic;
+}
+
+/* ==========================================================================
+   14. MINI HOMENAJE A CAMPEONES ANTES DEL FOOTER
+   ========================================================================== */
+.match-homenaje-container {
+  width: 100%;
+  text-align: center;
+  margin-top: 5rem;
+  margin-bottom: 2rem;
+  padding-top: 2.5rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  position: relative;
+  z-index: 2;
+}
+
+.match-homenaje-stars {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.match-homenaje-star {
+  width: 15px;
+  height: 15px;
+  fill: var(--color-match-dorado);
+  filter: drop-shadow(0 0 4px rgba(212,175,55,0.4));
+  animation: match-star-glow 4s infinite ease-in-out;
+}
+
+.match-homenaje-star:nth-child(2) {
+  animation-delay: 0.5s;
+  width: 18px;
+  height: 18px;
+}
+.match-homenaje-star:nth-child(3) {
+  animation-delay: 1s;
+}
+
+.match-homenaje-title {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: #FFFFFF;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 6px;
+}
+
+.match-homenaje-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+/* ==========================================================================
+   15. HOVERS Y MICROINTERACCIONES
+   ========================================================================== */
+.argentina-match-mode .control-btn, 
+.argentina-match-mode #live-sync-btn,
+.argentina-match-mode .brand-logo {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+              color 0.2s ease,
+              background-color 0.2s ease;
+}
+
+.argentina-match-mode .control-btn:hover,
+.argentina-match-mode #live-sync-btn:hover {
+  transform: scale(1.05);
+  color: #ffffff;
+  box-shadow: 0 0 15px rgba(110, 198, 255, 0.35);
+}
+
+.argentina-match-mode .brand-logo:hover {
+  transform: scale(1.015);
+}
+
+.argentina-match-mode .agenda-card,
+.argentina-match-mode .bracket-match-slot,
+.argentina-match-mode .match-banner-card,
+.argentina-match-mode .match-card-vs,
+.argentina-match-mode .match-previa-card,
+.argentina-match-mode .match-team-card {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.3s ease;
+}
+
+.argentina-match-mode .agenda-card:hover,
+.argentina-match-mode .bracket-match-slot:hover,
+.argentina-match-mode .match-banner-card:hover,
+.argentina-match-mode .match-card-vs:hover,
+.argentina-match-mode .match-previa-card:hover,
+.argentina-match-mode .match-team-card:hover {
+  transform: translateY(-4px) scale(1.015);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 
+              0 0 15px rgba(110, 198, 255, 0.12);
+  border-color: rgba(110, 198, 255, 0.3);
+}
+
+/* ==========================================================================
+   16. RESPONSIVE
+   ========================================================================== */
+@media (max-width: 1024px) {
+  .match-previa-section {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .match-right-column {
+    flex-direction: row;
+    align-items: stretch;
+  }
+  .match-card-vs, .match-previa-card, .match-team-card {
+    flex: 1;
+  }
+  .match-protagonists-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .match-right-column {
+    flex-direction: column;
+  }
+  .match-banner-card {
+    padding: 2rem;
+  }
+  .match-banner-title { font-size: 2.2rem; }
+  .match-banner-subtitle { font-size: 1.15rem; }
+  .match-quote-text { font-size: 1.35rem; }
+  .match-players-avatars-container {
+    gap: 20px;
+  }
+  .match-player-avatar-img {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+@media (max-width: 580px) {
+  .match-protagonists-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .match-banner-card {
+    padding: 1.6rem;
+    text-align: center;
+    align-items: center;
+  }
+  .match-banner-decor-line {
+    margin: 0 auto 1rem auto;
+    background: linear-gradient(90deg, transparent, var(--color-match-celeste), transparent);
+  }
+  .match-banner-title { font-size: 1.8rem; }
+  .match-banner-subtitle { font-size: 1.05rem; }
+  .match-quote-text {
+    font-size: 1.2rem;
+    padding: 0 1.2rem;
+  }
+  .match-quote-text::before,
+  .match-quote-text::after {
+    display: none;
+  }
+  .match-garland-container {
+    gap: 4px;
+    height: 32px;
+  }
+}
