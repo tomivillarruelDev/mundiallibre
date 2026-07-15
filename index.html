@@ -118,12 +118,19 @@
       }
     </script>
 
-    <!-- Google Fonts: Urbanist -->
+    <!-- Google Fonts: Urbanist (non-render-blocking) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700;800;900&display=swap"
-      rel="stylesheet" />
+      rel="preload"
+      as="style"
+      onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet" />
+    </noscript>
 
     <!-- CSS Stylesheet -->
     <link rel="preload" href="/css/style.css?v=112" as="style" />
@@ -140,6 +147,9 @@
     <link rel="dns-prefetch" href="//cdn.jsdelivr.net" />
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="preconnect" href="https://site.api.espn.com" crossorigin />
+    <link rel="preconnect" href="https://a.espncdn.com" crossorigin />
+    <link rel="preconnect" href="https://prope66bd35h.airspace-cdn.cbsivideo.com" crossorigin />
 
     <!-- Shaka Player CDN -->
     <script
@@ -172,9 +182,11 @@
             height="40"
             fetchpriority="high" />
           <img
-            src="/assets/mundiallibre.svg"
+            src="/assets/mundiallibre.webp"
             alt="Mundial Libre Logo"
             class="brand-logo-text-img"
+            width="160"
+            height="32"
             fetchpriority="high" />
         </a>
 
@@ -214,6 +226,7 @@
             <!-- Fallback Iframe (Used when Shaka Player / DRM fails) -->
             <iframe
               id="iframe-fallback"
+              title="Reproductor de video alternativo"
               style="display: none; width: 100%; height: 100%; border: none"
               allow="autoplay; encrypted-media; fullscreen"></iframe>
 
@@ -363,9 +376,11 @@
               margin-bottom: 4px;
             ">
             <img
-              src="/assets/mundiallibre.svg"
+              src="/assets/mundiallibre.webp"
               alt="Mundial Libre"
               loading="lazy"
+              width="160"
+              height="32"
               style="
                 height: 32px;
                 width: auto;

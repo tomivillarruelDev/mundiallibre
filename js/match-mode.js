@@ -410,7 +410,7 @@ const ARGENTINA_MATCH_MODE = true;
     players.forEach(p => {
       avatarsHTML += `
         <div class="match-player-avatar-item">
-          <img class="match-player-avatar-img" src="${p.img}" alt="${p.name}" />
+          <img class="match-player-avatar-img" src="${p.img}" alt="${p.name}" width="44" height="44" loading="lazy" decoding="async" />
           <span class="match-player-avatar-name">${p.name}</span>
         </div>
       `;
@@ -546,7 +546,7 @@ const ARGENTINA_MATCH_MODE = true;
     protagonists.forEach(p => {
       gridHTML += `
         <div class="match-protagonist-card">
-          <img class="match-protagonist-img" src="${p.img}" alt="${p.name}" />
+          <img class="match-protagonist-img" src="${p.img}" alt="${p.name}" width="92" height="92" loading="lazy" decoding="async" />
           <h4 class="match-protagonist-name">${p.name}</h4>
           <span class="match-protagonist-role">${p.role}</span>
           <p class="match-protagonist-quote">${p.quote}</p>

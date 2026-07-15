@@ -914,14 +914,14 @@ function renderMatchNode(ev, slot, isFinal = false) {
     <div class="${cardClass}">
       <div class="bracket-match-team ${isHomeWinner ? 'winner' : ''} ${isFinished && isAwayWinner ? 'loser' : ''}">
         <div class="bracket-team-info">
-          <img class="bracket-flag" src="${homeLogo}" alt="${homeName}" />
+          <img class="bracket-flag" src="${homeLogo}" alt="${homeName}" width="12" height="12" loading="lazy" decoding="async" />
           <span class="bracket-team-name">${homeName}</span>
         </div>
         <span class="bracket-team-score">${homeScore}</span>
       </div>
       <div class="bracket-match-team ${isAwayWinner ? 'winner' : ''} ${isFinished && isHomeWinner ? 'loser' : ''}">
         <div class="bracket-team-info">
-          <img class="bracket-flag" src="${awayLogo}" alt="${awayName}" />
+          <img class="bracket-flag" src="${awayLogo}" alt="${awayName}" width="12" height="12" loading="lazy" decoding="async" />
           <span class="bracket-team-name">${awayName}</span>
         </div>
         <span class="bracket-team-score">${awayScore}</span>
