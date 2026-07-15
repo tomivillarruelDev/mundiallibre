@@ -176,7 +176,7 @@ body.argentina-match-mode .app-header {
      3. Textura de cancha y estrellas sutiles */
   background-image: 
     linear-gradient(to bottom, #060e17 0%, rgba(6, 14, 23, 0.94) 40%, #060e17 100%),
-    url('/assets/heroes_lineup.jpg'),
+    url('/assets/heroes_lineup.webp'),
     radial-gradient(circle at 15% 20%, rgba(110, 198, 255, 0.015) 1.5px, transparent 1.5px),
     radial-gradient(circle at 80% 35%, rgba(212, 175, 55, 0.01) 2px, transparent 2px),
     radial-gradient(circle at 50% 75%, rgba(255, 255, 255, 0.015) 1.5px, transparent 1.5px),

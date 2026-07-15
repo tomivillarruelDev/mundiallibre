@@ -394,13 +394,13 @@ const ARGENTINA_MATCH_MODE = true;
     section.className = "match-players-row-section";
 
     const players = [
-      { name: "Messi", img: "/assets/messi.jpg" },
-      { name: "Julián", img: "/assets/julian.jpg" },
-      { name: "Dibu", img: "/assets/dibu.jpg" },
-      { name: "Enzo", img: "/assets/enzo.jpg" },
-      { name: "Paredes", img: "/assets/paredes.jpg" },
-      { name: "Cuti", img: "/assets/cuti.jpg" },
-      { name: "Scaloni", img: "/assets/scaloni.jpg" }
+      { name: "Messi", img: "/assets/messi.webp" },
+      { name: "Julián", img: "/assets/julian.webp" },
+      { name: "Dibu", img: "/assets/dibu.webp" },
+      { name: "Enzo", img: "/assets/enzo.webp" },
+      { name: "Paredes", img: "/assets/paredes.webp" },
+      { name: "Cuti", img: "/assets/cuti.webp" },
+      { name: "Scaloni", img: "/assets/scaloni.webp" }
     ];
 
     let avatarsHTML = "";
@@ -505,37 +505,37 @@ const ARGENTINA_MATCH_MODE = true;
         name: "Lionel Messi",
         role: "Líder y Capitán",
         quote: '"El guía de la Selección buscará escribir otra página de gloria."',
-        img: "/assets/messi.jpg"
+        img: "/assets/messi.webp"
       },
       {
         name: "Emiliano Martínez",
         role: "Arquero",
         quote: '"Siempre aparece cuando el equipo y la historia más lo necesitan."',
-        img: "/assets/dibu.jpg"
+        img: "/assets/dibu.webp"
       },
       {
         name: "Cristian Romero",
         role: "Defensor",
         quote: '"Solidez, firmeza y orgullo en cada cruce defensivo del equipo."',
-        img: "/assets/cuti.jpg"
+        img: "/assets/cuti.webp"
       },
       {
         name: "Leandro Paredes",
         role: "Mediocampista",
         quote: '"El equilibrio y la templanza en el corazón del mediocampo."',
-        img: "/assets/paredes.jpg"
+        img: "/assets/paredes.webp"
       },
       {
         name: "Julián Álvarez",
         role: "Delantero",
         quote: '"Presión, sacrificio incansable y gol en la fase decisiva."',
-        img: "/assets/julian.jpg"
+        img: "/assets/julian.webp"
       },
       {
         name: "Lionel Scaloni",
         role: "Director Técnico",
         quote: '"El arquitecto que transformó un grupo en una familia de campeones."',
-        img: "/assets/scaloni.jpg"
+        img: "/assets/scaloni.webp"
       }
     ];
 

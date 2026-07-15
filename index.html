@@ -2,7 +2,7 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta
       name="description"
       content="Mundial Libre - Mirá fútbol en vivo gratis en HD con baja latencia, señal estable y cobertura de los principales torneos internacionales." />
@@ -11,6 +11,11 @@
       content="futbol libre, mundial libre, futbol en vivo, copa america en vivo, eurocopa en vivo, ver futbol gratis hd, transmision futbol online, dsports en vivo" />
     <meta name="robots" content="index, follow" />
     <meta name="google-site-verification" content="qY3G6KcyWsuF0Gc6paD_POjngbvopvtGDoPmMm7JuSA" />
+    <meta name="theme-color" content="#ffe600" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Mundial Libre" />
     <link rel="canonical" href="https://mundiallibre.vercel.app/" />
 
     <!-- Open Graph / Facebook -->
@@ -25,7 +30,7 @@
       content="Mundial Libre - Mirá fútbol en vivo gratis en HD con baja latencia, señal estable y cobertura de los principales torneos internacionales." />
     <meta
       property="og:image"
-      content="https://mundiallibre.vercel.app/assets/logo.png" />
+      content="https://mundiallibre.vercel.app/assets/logo.webp" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -38,7 +43,7 @@
       content="Mundial Libre - Mirá fútbol en vivo gratis en HD con baja latencia, señal estable y cobertura de los principales torneos internacionales." />
     <meta
       name="twitter:image"
-      content="https://mundiallibre.vercel.app/assets/logo.png" />
+      content="https://mundiallibre.vercel.app/assets/logo.webp" />
 
     <!-- Schema.org JSON-LD Structured Data -->
     <script type="application/ld+json">
@@ -56,6 +61,61 @@
         }
       }
     </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Mundial Libre",
+        "url": "https://mundiallibre.vercel.app/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://mundiallibre.vercel.app/assets/logo.webp",
+          "width": 512,
+          "height": 512
+        },
+        "description": "Plataforma de transmisión de fútbol en vivo gratis en alta definición con baja latencia.",
+        "foundingDate": "2026",
+        "sameAs": [
+          "https://www.linkedin.com/in/tomasvillarruel/"
+        ]
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "VideoObject",
+        "name": "Fútbol en Vivo Gratis en HD - Mundial Libre",
+        "description": "Transmisión en vivo de fútbol en alta definición. Señal estable, baja latencia y cobertura de los principales torneos internacionales incluyendo Copa América, Eurocopa y Mundiales.",
+        "thumbnailUrl": "https://mundiallibre.vercel.app/assets/logo.webp",
+        "uploadDate": "2026-07-14",
+        "embedUrl": "https://mundiallibre.vercel.app/",
+        "contentUrl": "https://mundiallibre.vercel.app/",
+        "isLiveBroadcast": true,
+        "publication": {
+          "@type": "BroadcastEvent",
+          "isLiveBroadcast": true,
+          "startDate": "2026-06-11T00:00:00-03:00"
+        },
+        "potentialAction": {
+          "@type": "WatchAction",
+          "target": "https://mundiallibre.vercel.app/"
+        }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Inicio",
+            "item": "https://mundiallibre.vercel.app/"
+          }
+        ]
+      }
+    </script>
 
     <title>Mundial Libre | Fútbol en Vivo Gratis en HD</title>
 
@@ -67,17 +127,20 @@
       rel="stylesheet" />
 
     <!-- CSS Stylesheet -->
-    <link rel="stylesheet" href="/css/style.css?v=112" />
+    <link rel="preload" href="/css/style.css?v=112" as="style" />
+    <link rel="stylesheet" href="/css/style.css?v=112" fetchpriority="high" />
 
     <!-- Favicon -->
-    <link rel="shortcut icon" href="/favicon.ico" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
-    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
-    <link rel="apple-touch-icon" href="/assets/logo.png" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/assets/logo.png" />
+    <link rel="icon" type="image/webp" sizes="32x32" href="/favicon.webp" />
+    <link rel="apple-touch-icon" href="/assets/logo.webp" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/assets/logo.webp" />
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/manifest.json" />
 
     <link rel="dns-prefetch" href="//cdnjs.cloudflare.com" />
     <link rel="dns-prefetch" href="//cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
 
     <!-- Shaka Player CDN -->
     <script
@@ -103,13 +166,17 @@
           class="brand-logo"
           id="brand-home-link">
           <img
-            src="/assets/logo.svg"
+            src="/assets/logo.webp"
             alt="Logo de Mundial Libre"
-            class="brand-logo-img" />
+            class="brand-logo-img"
+            width="40"
+            height="40"
+            fetchpriority="high" />
           <img
             src="/assets/mundiallibre.svg"
             alt="Mundial Libre Logo"
-            class="brand-logo-text-img" />
+            class="brand-logo-text-img"
+            fetchpriority="high" />
         </a>
 
         <div class="navbar-right">
@@ -299,6 +366,7 @@
             <img
               src="/assets/mundiallibre.svg"
               alt="Mundial Libre"
+              loading="lazy"
               style="
                 height: 32px;
                 width: auto;
@@ -339,8 +407,11 @@
               <div class="stats-column-header">
                 <img
                   class="stats-team-logo home-stats-logo"
-                  src="/assets/logo.svg"
-                  alt="Local Logo" />
+                  src="/assets/logo.webp"
+                  alt="Local Logo"
+                  loading="lazy"
+                  width="32"
+                  height="32" />
                 <span class="stats-team-name home-stats-name">Local</span>
               </div>
               <div class="stats-list home-stats-list">
@@ -356,8 +427,11 @@
                 <span class="stats-team-name away-stats-name">Visitante</span>
                 <img
                   class="stats-team-logo away-stats-logo"
-                  src="/assets/logo.svg"
-                  alt="Visitante Logo" />
+                  src="/assets/logo.webp"
+                  alt="Visitante Logo"
+                  loading="lazy"
+                  width="32"
+                  height="32" />
               </div>
               <div class="stats-list away-stats-list">
                 <!-- Rendered dynamically -->
@@ -379,8 +453,11 @@
                 <div class="agenda-team home-agenda">
                   <img
                     class="agenda-logo prev-home-logo"
-                    src="/assets/logo.svg"
-                    alt="Escudo local anterior" />
+                    src="/assets/logo.webp"
+                    alt="Escudo local anterior"
+                    loading="lazy"
+                    width="28"
+                    height="28" />
                   <span class="agenda-name prev-home-name">-</span>
                 </div>
                 <div class="agenda-score-box">
@@ -392,8 +469,11 @@
                   <span class="agenda-name prev-away-name">-</span>
                   <img
                     class="agenda-logo prev-away-logo"
-                    src="/assets/logo.svg"
-                    alt="Escudo visitante anterior" />
+                    src="/assets/logo.webp"
+                    alt="Escudo visitante anterior"
+                    loading="lazy"
+                    width="28"
+                    height="28" />
                 </div>
               </div>
             </div>
@@ -410,8 +490,11 @@
                 <div class="agenda-team home-agenda">
                   <img
                     class="agenda-logo next-home-logo"
-                    src="/assets/logo.svg"
-                    alt="Escudo local próximo" />
+                    src="/assets/logo.webp"
+                    alt="Escudo local próximo"
+                    loading="lazy"
+                    width="28"
+                    height="28" />
                   <span class="agenda-name next-home-name">-</span>
                 </div>
                 <div class="agenda-time-box">
@@ -421,8 +504,11 @@
                   <span class="agenda-name next-away-name">-</span>
                   <img
                     class="agenda-logo next-away-logo"
-                    src="/assets/logo.svg"
-                    alt="Escudo visitante próximo" />
+                    src="/assets/logo.webp"
+                    alt="Escudo visitante próximo"
+                    loading="lazy"
+                    width="28"
+                    height="28" />
                 </div>
               </div>
             </div>
@@ -675,8 +761,11 @@
             margin-top: 10px;
           ">
           <img
-            src="/assets/tomas_logo.png"
+            src="/assets/tomas_logo.webp"
             alt="Logo de Tomás Villarruel"
+            loading="lazy"
+            width="18"
+            height="18"
             style="
               height: 18px;
               width: auto;

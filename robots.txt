@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /js/modules/security.js
+
+Sitemap: https://mundiallibre.vercel.app/sitemap.xml
