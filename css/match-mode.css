@@ -44,13 +44,13 @@ body.argentina-match-mode .app-header {
 @keyframes match-pulse-glow {
   0%, 100% {
     box-shadow: 0px 20px 50px rgba(110, 198, 255, 0.15),
-                0px 0px 100px 30px rgba(167, 226, 255, 0.05),
-                0px 0px 180px 60px rgba(110, 198, 255, 0.02);
+                0px 0px 100px 30px rgba(255, 255, 255, 0.05),
+                0px 0px 180px 60px rgba(212, 175, 55, 0.03);
   }
   50% {
-    box-shadow: 0px 20px 70px rgba(110, 198, 255, 0.28),
-                0px 0px 130px 45px rgba(167, 226, 255, 0.1),
-                0px 0px 210px 75px rgba(110, 198, 255, 0.04);
+    box-shadow: 0px 20px 70px rgba(212, 175, 55, 0.22),
+                0px 0px 130px 45px rgba(110, 198, 255, 0.15),
+                0px 0px 210px 75px rgba(255, 255, 255, 0.04);
   }
 }
 
@@ -90,7 +90,7 @@ body.argentina-match-mode .app-header {
   position: relative;
   width: 100%;
   height: 38px;
-  background: linear-gradient(135deg, rgba(10, 25, 47, 0.85), rgba(27, 73, 101, 0.85));
+  background: linear-gradient(135deg, rgba(10, 25, 47, 0.9), rgba(43, 34, 18, 0.9));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-match-glass-border);
@@ -175,20 +175,20 @@ body.argentina-match-mode .app-header {
      2. Lineup de Héroes fijo
      3. Textura de cancha y estrellas sutiles */
   background-image: 
-    linear-gradient(to bottom, #060e17 0%, rgba(6, 14, 23, 0.94) 40%, #060e17 100%),
+    linear-gradient(to bottom, #060e17 0%, rgba(6, 14, 23, 0.96) 40%, #060e17 100%),
     url('/assets/heroes_lineup.webp'),
-    radial-gradient(circle at 15% 20%, rgba(110, 198, 255, 0.015) 1.5px, transparent 1.5px),
-    radial-gradient(circle at 80% 35%, rgba(212, 175, 55, 0.01) 2px, transparent 2px),
-    radial-gradient(circle at 50% 75%, rgba(255, 255, 255, 0.015) 1.5px, transparent 1.5px),
-    linear-gradient(rgba(255, 255, 255, 0.002) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.002) 1px, transparent 1px);
+    radial-gradient(circle at 15% 20%, rgba(110, 198, 255, 0.02) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 80% 35%, rgba(212, 175, 55, 0.025) 2px, transparent 2px),
+    radial-gradient(circle at 50% 75%, rgba(255, 255, 255, 0.02) 1.5px, transparent 1.5px),
+    linear-gradient(rgba(255, 255, 255, 0.003) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.003) 1px, transparent 1px);
   background-size: cover, cover, 500px 500px, 600px 600px, 450px 450px, 120px 120px, 120px 120px;
   background-position: center center, center 28%, center center, center center, center center, center center, center center;
   background-repeat: no-repeat, no-repeat, repeat, repeat, repeat, repeat, repeat;
   background-attachment: fixed, fixed, scroll, scroll, scroll, scroll, scroll;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.95;
+  opacity: 0.96;
 }
 
 /* ==========================================================================
@@ -399,7 +399,7 @@ body.argentina-match-mode .app-header {
   margin-top: 2.5rem;
   margin-bottom: 2rem;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 24px;
   align-items: stretch;
   position: relative;
@@ -1043,7 +1043,8 @@ body.argentina-match-mode .app-header {
 .argentina-match-mode .match-banner-card,
 .argentina-match-mode .match-card-vs,
 .argentina-match-mode .match-previa-card,
-.argentina-match-mode .match-team-card {
+.argentina-match-mode .match-team-card,
+.argentina-match-mode .match-countdown-card {
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
               box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
               border-color 0.3s ease;
@@ -1054,11 +1055,12 @@ body.argentina-match-mode .app-header {
 .argentina-match-mode .match-banner-card:hover,
 .argentina-match-mode .match-card-vs:hover,
 .argentina-match-mode .match-previa-card:hover,
-.argentina-match-mode .match-team-card:hover {
+.argentina-match-mode .match-team-card:hover,
+.argentina-match-mode .match-countdown-card:hover {
   transform: translateY(-4px) scale(1.015);
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 
-              0 0 15px rgba(110, 198, 255, 0.12);
-  border-color: rgba(110, 198, 255, 0.3);
+              0 0 20px rgba(212, 175, 55, 0.18);
+  border-color: rgba(212, 175, 55, 0.35);
 }
 
 /* ==========================================================================
@@ -1073,12 +1075,15 @@ body.argentina-match-mode .app-header {
     flex-direction: row;
     align-items: stretch;
   }
-  .match-card-vs, .match-previa-card, .match-team-card {
+  .match-card-vs, .match-previa-card, .match-team-card, .match-countdown-card {
     flex: 1;
   }
   .match-protagonists-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
+  }
+  .match-dream-phrase {
+    font-size: 2.2rem;
   }
 }
 
@@ -1098,6 +1103,15 @@ body.argentina-match-mode .app-header {
   .match-player-avatar-img {
     width: 48px;
     height: 48px;
+  }
+  .match-dream-container {
+    padding: 4rem 1.5rem;
+  }
+  .match-dream-phrase {
+    font-size: 1.8rem;
+  }
+  .match-dream-desc {
+    font-size: 1.25rem;
   }
 }
 
@@ -1132,3 +1146,240 @@ body.argentina-match-mode .app-header {
     height: 32px;
   }
 }
+
+/* ==========================================================================
+   17. ESTILOS DE LA CUENTA REGRESIVA (GLASSMORPHISM & GLOW)
+   ========================================================================== */
+.match-countdown-card {
+  background: linear-gradient(135deg, rgba(10, 25, 47, 0.75), rgba(43, 34, 18, 0.45));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: var(--radius-lg);
+  padding: 1.8rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.45), 
+              0 0 25px rgba(212, 175, 55, 0.1);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.match-countdown-decor-line {
+  width: 50px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-match-dorado), transparent);
+  margin-bottom: 1.2rem;
+}
+
+.match-countdown-title {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 900;
+  color: var(--color-match-dorado);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 15px;
+  text-shadow: 0 0 8px rgba(212, 175, 55, 0.3);
+}
+
+.match-countdown-timer {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  margin: 10px 0;
+}
+
+.countdown-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.countdown-num {
+  font-family: var(--font-display);
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: #FFFFFF;
+  line-height: 1;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.35),
+               0 0 30px rgba(110, 198, 255, 0.2);
+}
+
+.countdown-label {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: var(--color-match-celeste-light);
+  letter-spacing: 0.1em;
+  margin-top: 4px;
+}
+
+.match-countdown-footer {
+  margin-top: 15px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.countdown-finished {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--color-match-dorado);
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+  letter-spacing: 0.05em;
+  padding: 10px;
+}
+
+/* ==========================================================================
+   18. ESTILOS DE LA SECCIÓN CINEMATOGRÁFICA "EL SUEÑO DE LA CUARTA"
+   ========================================================================== */
+.match-dream-container {
+  width: 100%;
+  margin: 5rem 0;
+  padding: 6.5rem 2rem;
+  background: radial-gradient(circle at center, rgba(27, 73, 101, 0.18) 0%, rgba(10, 25, 47, 0) 70%),
+              linear-gradient(180deg, rgba(6, 14, 23, 0.8) 0%, rgba(15, 37, 66, 0.2) 50%, rgba(6, 14, 23, 0.8) 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.match-dream-glow-backdrop {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.match-dream-content {
+  position: relative;
+  z-index: 2;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.match-dream-subtitle {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: var(--color-match-dorado);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  margin-bottom: 3.5rem;
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+}
+
+.match-dream-phrases {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  margin-bottom: 3.5rem;
+}
+
+.match-dream-phrase {
+  font-family: var(--font-display);
+  font-size: 2.8rem;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: dream-fade-in 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes dream-fade-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.match-dream-desc {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-match-celeste);
+  letter-spacing: 0.04em;
+  max-width: 90%;
+  margin: 0 auto 3rem auto;
+  line-height: 1.4;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+.match-dream-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.match-dream-divider::before,
+.match-dream-divider::after {
+  content: '';
+  width: 80px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.3), transparent);
+}
+
+.dream-star-contour {
+  font-size: 1.2rem;
+  color: var(--color-match-dorado);
+  opacity: 0.6;
+  animation: match-star-glow 4s infinite ease-in-out;
+}
+
+/* ==========================================================================
+   19. DETALLES DE ANIMACIÓN DE LA CUARTA ESTRELLA Y EL FONDO HERO
+   ========================================================================== */
+.match-star-fourth {
+  filter: drop-shadow(0 0 6px rgba(212, 175, 55, 0.7));
+  animation: match-star-glow 4s infinite ease-in-out;
+  animation-delay: 1.8s;
+}
+
+.match-star-contour {
+  filter: drop-shadow(0 0 2px rgba(212, 175, 55, 0.2));
+}
+
+.match-hero-bg-star {
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 320px;
+  height: 320px;
+  z-index: 1;
+  opacity: 0;
+  animation: reveal-bg-star 8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes reveal-bg-star {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8) rotate(-15deg);
+  }
+  100% {
+    opacity: 0.03;
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+  }
+}
+
+

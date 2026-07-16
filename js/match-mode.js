@@ -6,6 +6,7 @@ const ARGENTINA_MATCH_MODE = typeof window.ARGENTINA_MATCH_MODE !== 'undefined' 
 (function() {
   let confettiAnimationFrame = null;
   let isMatchModeActive = false;
+  let countdownInterval = null;
 
   // Inicialización en DOMContentLoaded (o inmediato si ya cargó)
   if (document.readyState === "loading") {
@@ -58,16 +59,13 @@ const ARGENTINA_MATCH_MODE = typeof window.ARGENTINA_MATCH_MODE !== 'undefined' 
     // 9. Crear Separador deportivo
     createSportDivider("previa-scaloneta-divider");
 
-    // 10. Crear Franja "La Scaloneta"
-    createScalonetaBar();
-
-    // 11. Crear Frase Destacada (Cita elegante)
-    createQuoteSection();
+    // 11. Crear Sección Cinematográfica (El Sueño de la Cuarta)
+    createDreamSection();
 
     // 12. Crear Separador deportivo
     createSportDivider("quote-protagonists-divider");
 
-    // 13. Crear Sección Protagonistas (Tarjetas de Messi, Scaloni, Dibu, Julián)
+    // 13. Crear Sección Protagonistas (Tarjetas de Messi, Dibu, Julián, Enzo, De Paul, Scaloni)
     createProtagonistsSection();
 
     // 14. Crear Mini Homenaje antes del footer
@@ -100,16 +98,19 @@ const ARGENTINA_MATCH_MODE = typeof window.ARGENTINA_MATCH_MODE !== 'undefined' 
     removeElementById("match-previa-section");
     removeElementById("match-players-row-section");
     removeElementById("previa-scaloneta-divider");
-    removeElementById("match-scaloneta-bar");
-    removeElementById("match-quote-section");
+    removeElementById("match-dream-section");
     removeElementById("quote-protagonists-divider");
     removeElementById("match-protagonists-section");
     removeElementById("match-homenaje-section");
 
-    // 4. Detener confetti
+    // 4. Detener confetti e intervalos
     if (confettiAnimationFrame) {
       cancelAnimationFrame(confettiAnimationFrame);
       confettiAnimationFrame = null;
+    }
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
     }
     removeElementById("match-confetti-canvas");
   }
@@ -127,12 +128,12 @@ const ARGENTINA_MATCH_MODE = typeof window.ARGENTINA_MATCH_MODE !== 'undefined' 
     `;
   }
 
-  function getEnglandFlagSVG(extraClass = "") {
+  function getSpainFlagSVG(extraClass = "") {
     return `
-      <svg class="match-flag-svg-icon ${extraClass}" width="18" height="12" viewBox="0 0 50 30" xmlns="http://www.w3.org/2000/svg" style="display:inline-block; vertical-align:middle; border-radius:1.5px; box-shadow:0 1px 3px rgba(0,0,0,0.35); outline:1px solid rgba(255,255,255,0.1);">
-        <rect width="50" height="30" fill="#FFFFFF"/>
-        <rect y="12" width="50" height="6" fill="#CF142B"/>
-        <rect x="22" width="6" height="30" fill="#CF142B"/>
+      <svg class="match-flag-svg-icon ${extraClass}" width="18" height="12" viewBox="0 0 3 2" xmlns="http://www.w3.org/2000/svg" style="display:inline-block; vertical-align:middle; border-radius:1.5px; box-shadow:0 1px 3px rgba(0,0,0,0.35); outline:1px solid rgba(255,255,255,0.1);">
+        <rect width="3" height="2" fill="#C1272D"/>
+        <rect y="0.5" width="3" height="1" fill="#FCE300"/>
+        <rect x="0.6" y="0.7" width="0.3" height="0.4" fill="#C1272D" rx="0.05"/>
       </svg>
     `;
   }
@@ -141,6 +142,37 @@ const ARGENTINA_MATCH_MODE = typeof window.ARGENTINA_MATCH_MODE !== 'undefined' 
     return `
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;">
         <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    `;
+  }
+
+  function getMusicIconSVG() {
+    return `
+      <svg class="match-music-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px; color:var(--color-match-dorado); flex-shrink:0; filter:drop-shadow(0 0 4px rgba(212,175,55,0.45));">
+        <path d="M9 18V5l12-2v13"></path>
+        <circle cx="6" cy="18" r="3"></circle>
+        <circle cx="18" cy="16" r="3"></circle>
+      </svg>
+    `;
+  }
+
+  function getFourthStarSVG() {
+    return `
+      <svg class="match-star-svg match-star-fourth" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px; filter: drop-shadow(0 0 6px rgba(212,175,55,0.6));">
+        <defs>
+          <linearGradient id="fourth-star-grad" x1="-100%" y1="-100%" x2="200%" y2="200%">
+            <stop offset="0%" stop-color="#D4AF37"/>
+            <stop offset="35%" stop-color="#D4AF37"/>
+            <stop offset="50%" stop-color="#FFFFFF"/>
+            <stop offset="65%" stop-color="#D4AF37"/>
+            <stop offset="100%" stop-color="#D4AF37"/>
+            <animate attributeName="x1" from="-100%" to="200%" dur="5s" repeatCount="indefinite" />
+            <animate attributeName="y1" from="-100%" to="200%" dur="5s" repeatCount="indefinite" />
+            <animate attributeName="x2" from="0%" to="300%" dur="5s" repeatCount="indefinite" />
+            <animate attributeName="y2" from="0%" to="300%" dur="5s" repeatCount="indefinite" />
+          </linearGradient>
+        </defs>
+        <path d="M12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.62L12 2L9.19 8.62L2 9.24L7.45 13.97L5.82 21L12 17.27Z" fill="url(#fourth-star-grad)" />
       </svg>
     `;
   }
@@ -185,16 +217,15 @@ const ARGENTINA_MATCH_MODE = typeof window.ARGENTINA_MATCH_MODE !== 'undefined' 
 
     const flag = getArgentinaFlagSVG("ticker-flag");
     const content = `
-      <div class="match-ticker-item">${flag} &nbsp; <span class="ticker-dorado">VAMOS SELECCIÓN</span></div>
-      <div class="match-ticker-item"><span>•</span> EDICIÓN ESPECIAL ARGENTINA</div>
-      <div class="match-ticker-item"><span>•</span><span class="ticker-dorado">MUCHACHOOOS</span></div>
-      <div class="match-ticker-item"><span>•</span> EL SENTIMIENTO DE UN PAÍS</div>
-      <div class="match-ticker-item"><span>•</span> ${flag} &nbsp; <span class="ticker-dorado">TRANSMISIÓN PREMIUM BAJA LATENCIA</span></div>
+      <div class="match-ticker-item">${flag} &nbsp; <span class="ticker-dorado">ARGENTINA ESTÁ EN LA FINAL</span></div>
+      <div class="match-ticker-item"><span>•</span> EL DOMINGO VAMOS POR LA CUARTA</div>
+      <div class="match-ticker-item"><span>•</span> LA ILUSIÓN DE TODO UN PAÍS</div>
+      <div class="match-ticker-item"><span>•</span> FINAL DEL MUNDO EN VIVO</div>
     `;
 
     ticker.innerHTML = `
       <div class="match-ticker-track">
-        ${content} ${content} ${content}
+        ${content} ${content} ${content} ${content}
       </div>
     `;
 
@@ -298,27 +329,34 @@ const ARGENTINA_MATCH_MODE = typeof window.ARGENTINA_MATCH_MODE !== 'undefined' 
     hero.id = "match-hero-section";
     hero.className = "match-hero-section";
 
+    // Agregar la estrella gigante transparente detrás
+    const bgStar = `
+      <div class="match-hero-bg-star">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="var(--color-match-dorado)">
+          <path d="M12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.62L12 2L9.19 8.62L2 9.24L7.45 13.97L5.82 21L12 17.27Z"/>
+        </svg>
+      </div>
+    `;
+
     hero.innerHTML = `
+      ${bgStar}
       <div class="match-hero-badges">
-        <span class="match-badge match-badge-albiceleste">
-          ${getArgentinaFlagSVG()} &nbsp; EDICIÓN ESPECIAL
-        </span>
-        <span class="match-badge match-badge-dorado">
-          SELECCIÓN ARGENTINA
-        </span>
         <span class="match-badge match-badge-live">
           <span class="live-dot-pulse"></span>
-          SEMIFINAL
+          FINALISTA
+        </span>
+        <span class="match-badge match-badge-dorado">
+          VAMOS POR LA CUARTA
         </span>
       </div>
       <div class="match-hero-title-container">
-        <div class="match-hero-top-text">La ilusión vuelve a rodar</div>
+        <div class="match-hero-top-text">A UN PASO DE LA HISTORIA</div>
         <h2 class="match-hero-title">VAMOS <span>ARGENTINA</span></h2>
         <div class="match-hero-stars">
-          ${getStarSVG()}${getStarSVG()}${getStarSVG()}
+          ${getStarSVG()}${getStarSVG()}${getStarSVG()}${getFourthStarSVG()}
         </div>
       </div>
-      <p class="match-hero-subtitle" id="match-hero-subtitle">Edición especial previa al partido de la Selección</p>
+      <p class="match-hero-subtitle" id="match-hero-subtitle">Argentina está en la Final. El sueño de la cuarta estrella continúa.</p>
     `;
 
     // Insertar arriba del reproductor
@@ -349,18 +387,26 @@ const ARGENTINA_MATCH_MODE = typeof window.ARGENTINA_MATCH_MODE !== 'undefined' 
     wrapper.className = "match-previa-section";
 
     wrapper.innerHTML = `
-      <!-- Panel de Muchachos (Izquierda) -->
+      <!-- Panel del Sueño de la Cuarta (Izquierda) -->
       <div class="match-banner-card">
         <div class="match-banner-decor-line"></div>
-        <h3 class="match-banner-title">MUCHACHOOOOS...</h3>
-        <p class="match-banner-subtitle">AHORA NOS VOLVIMO' A ILUSIONAR</p>
-        <p class="match-banner-desc">Toda Argentina esperando el próximo partido. Una cita con el destino en la fase final.</p>
+        <h3 class="match-banner-title">LA ILUSIÓN DE LA CUARTA...</h3>
+        <p class="match-banner-subtitle">EL SUEÑO ESTÁ MÁS CERCA</p>
+        <p class="match-banner-desc" style="line-height: 1.6; font-style: italic; display: flex; align-items: flex-start; gap: 8px;">
+          ${getMusicIconSVG()}
+          <span>
+            Por Malvinas,<br>
+            Por el Diego,<br>
+            Por la última de Leo,<br>
+            Argentina quiero verte bicampeón.
+          </span>
+        </p>
         <div class="match-banner-footer">Edición Especial • Mundial Libre 2026</div>
       </div>
 
-      <!-- Tarjeta del Partido (Derecha) -->
+      <!-- Tarjeta del Partido (Centro) -->
       <div class="match-card-vs">
-        <div class="match-vs-header">SEMIFINAL</div>
+        <div class="match-vs-header">FINAL DEL MUNDO</div>
         <div class="match-teams-row">
           <div class="match-team-box">
             ${getArgentinaFlagSVG("team-flag-large")}
@@ -368,11 +414,36 @@ const ARGENTINA_MATCH_MODE = typeof window.ARGENTINA_MATCH_MODE !== 'undefined' 
           </div>
           <div class="match-vs-divider">VS</div>
           <div class="match-team-box">
-            ${getEnglandFlagSVG("team-flag-large")}
-            <span class="match-team-name">INGLATERRA</span>
+            ${getSpainFlagSVG("team-flag-large")}
+            <span class="match-team-name">ESPAÑA</span>
           </div>
         </div>
-        <div class="match-vs-footer">PREVIA EN VIVO</div>
+        <div class="match-vs-footer">DOMINGO 16:00 HS</div>
+      </div>
+
+      <!-- Tarjeta de Cuenta Regresiva (Derecha) -->
+      <div class="match-countdown-card">
+        <div class="match-countdown-decor-line"></div>
+        <h3 class="match-countdown-title">CUENTA REGRESIVA</h3>
+        <div class="match-countdown-timer" id="countdown-timer">
+          <div class="countdown-unit">
+            <span class="countdown-num" id="cd-days">00</span>
+            <span class="countdown-label">DÍAS</span>
+          </div>
+          <div class="countdown-unit">
+            <span class="countdown-num" id="cd-hours">00</span>
+            <span class="countdown-label">HRS</span>
+          </div>
+          <div class="countdown-unit">
+            <span class="countdown-num" id="cd-minutes">00</span>
+            <span class="countdown-label">MINS</span>
+          </div>
+          <div class="countdown-unit">
+            <span class="countdown-num" id="cd-seconds">00</span>
+            <span class="countdown-label">SEGS</span>
+          </div>
+        </div>
+        <div class="match-countdown-footer">Rumbo a la gloria eterna</div>
       </div>
     `;
 
@@ -387,6 +458,8 @@ const ARGENTINA_MATCH_MODE = typeof window.ARGENTINA_MATCH_MODE !== 'undefined' 
       const main = document.querySelector(".main-content");
       if (main) main.appendChild(wrapper);
     }
+
+    startCountdown();
   }
 
   function createPlayersRowSection() {
@@ -445,55 +518,80 @@ const ARGENTINA_MATCH_MODE = typeof window.ARGENTINA_MATCH_MODE !== 'undefined' 
       const ref = document.getElementById("match-players-row-section");
       if (ref) ref.parentNode.insertBefore(div, ref.nextSibling);
     } else if (id === "quote-protagonists-divider") {
-      const ref = document.getElementById("match-quote-section");
+      const ref = document.getElementById("match-dream-section");
       if (ref) ref.parentNode.insertBefore(div, ref.nextSibling);
     }
   }
 
-  function createScalonetaBar() {
-    if (document.getElementById("match-scaloneta-bar")) return;
+  function createDreamSection() {
+    if (document.getElementById("match-dream-section")) return;
 
-    const bar = document.createElement("div");
-    bar.id = "match-scaloneta-bar";
-    bar.className = "match-scaloneta-bar";
+    const section = document.createElement("div");
+    section.id = "match-dream-section";
+    section.className = "match-dream-container";
 
-    bar.innerHTML = `
-      <div class="match-scaloneta-title">
-        ${getArgentinaFlagSVG()} &nbsp; LA SCALONETA ESTÁ LISTA
+    section.innerHTML = `
+      <div class="match-dream-glow-backdrop"></div>
+      <div class="match-dream-content">
+        <h3 class="match-dream-subtitle">EL SUEÑO DE LA CUARTA</h3>
+        <div class="match-dream-phrases">
+          <div class="match-dream-phrase" style="animation-delay: 0.1s">Noventa minutos.</div>
+          <div class="match-dream-phrase" style="animation-delay: 0.3s">Un equipo.</div>
+          <div class="match-dream-phrase" style="animation-delay: 0.5s">Un país.</div>
+          <div class="match-dream-phrase" style="animation-delay: 0.7s">Un sueño.</div>
+        </div>
+        <p class="match-dream-desc">La cuarta estrella está cada vez más cerca.</p>
+        <div class="match-dream-divider">
+          <span class="dream-star-contour">★</span>
+        </div>
       </div>
-      <div class="match-scaloneta-desc">Un equipo. Una ilusión. Noventa minutos para seguir soñando.</div>
     `;
 
     const divider = document.getElementById("previa-scaloneta-divider");
     if (divider) {
-      divider.parentNode.insertBefore(bar, divider.nextSibling);
+      divider.parentNode.insertBefore(section, divider.nextSibling);
+    } else {
+      const main = document.querySelector(".main-content");
+      if (main) main.appendChild(section);
     }
   }
 
-  function createQuoteSection() {
-    if (document.getElementById("match-quote-section")) return;
+  function startCountdown() {
+    const targetDate = new Date("2026-07-19T16:00:00-03:00").getTime();
 
-    const quote = document.createElement("div");
-    quote.id = "match-quote-section";
-    quote.className = "match-quote-container";
+    if (countdownInterval) clearInterval(countdownInterval);
 
-    quote.innerHTML = `
-      <div class="match-quote-line"></div>
-      <div style="font-size:0.75rem; font-weight:800; color:var(--color-match-celeste); letter-spacing:0.18em; text-transform:uppercase; margin-bottom:-0.8rem; opacity:0.85; text-align:center;">Hoy juega la camiseta</div>
-      <blockquote class="match-quote-text">
-        Hoy no juega un equipo. Juega un país.
-      </blockquote>
-      <div class="match-quote-author">Mundial Libre Ediciones Especiales</div>
-      <div class="match-quote-line" style="margin-top: 1.8rem;"></div>
-    `;
+    function update() {
+      const now = new Date().getTime();
+      const diff = targetDate - now;
 
-    const scalonetaBar = document.getElementById("match-scaloneta-bar");
-    if (scalonetaBar) {
-      scalonetaBar.parentNode.insertBefore(quote, scalonetaBar.nextSibling);
-    } else {
-      const main = document.querySelector(".main-content");
-      if (main) main.appendChild(quote);
+      if (diff <= 0) {
+        clearInterval(countdownInterval);
+        const timerContainer = document.getElementById("countdown-timer");
+        if (timerContainer) {
+          timerContainer.innerHTML = `<div class="countdown-finished">¡LLEGÓ EL MOMENTO DE LA GLORIA!</div>`;
+        }
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      const daysEl = document.getElementById("cd-days");
+      const hoursEl = document.getElementById("cd-hours");
+      const minsEl = document.getElementById("cd-minutes");
+      const secsEl = document.getElementById("cd-seconds");
+
+      if (daysEl) daysEl.innerText = String(days).padStart(2, '0');
+      if (hoursEl) hoursEl.innerText = String(hours).padStart(2, '0');
+      if (minsEl) minsEl.innerText = String(minutes).padStart(2, '0');
+      if (secsEl) secsEl.innerText = String(seconds).padStart(2, '0');
     }
+
+    update();
+    countdownInterval = setInterval(update, 1000);
   }
 
   function createProtagonistsSection() {
@@ -507,37 +605,37 @@ const ARGENTINA_MATCH_MODE = typeof window.ARGENTINA_MATCH_MODE !== 'undefined' 
       {
         name: "Lionel Messi",
         role: "Líder y Capitán",
-        quote: '"El guía de la Selección buscará escribir otra página de gloria."',
+        quote: '"El capitán que sigue escribiendo historia rumbo a la eternidad."',
         img: "/assets/messi.webp"
       },
       {
         name: "Emiliano Martínez",
-        role: "Arquero",
-        quote: '"Siempre aparece cuando el equipo y la historia más lo necesitan."',
+        role: "El Arquero",
+        quote: '"Cuando el arco pesa, aparece para defender la ilusión de todo un país."',
         img: "/assets/dibu.webp"
       },
       {
         name: "Cristian Romero",
-        role: "Defensor",
-        quote: '"Solidez, firmeza y orgullo en cada cruce defensivo del equipo."',
+        role: "El Defensor",
+        quote: '"Solidez, firmeza y orgullo en cada cruce rumbo a la gloria."',
         img: "/assets/cuti.webp"
       },
       {
         name: "Leandro Paredes",
-        role: "Mediocampista",
-        quote: '"El equilibrio y la templanza en el corazón del mediocampo."',
+        role: "El Mediocampista",
+        quote: '"El equilibrio y la templanza en el corazón del mediocampo finalista."',
         img: "/assets/paredes.webp"
       },
       {
         name: "Julián Álvarez",
-        role: "Delantero",
-        quote: '"Presión, sacrificio incansable y gol en la fase decisiva."',
+        role: "El Delantero",
+        quote: '"Entrega incondicional, presión y goles determinantes para el sueño."',
         img: "/assets/julian.webp"
       },
       {
         name: "Lionel Scaloni",
-        role: "Director Técnico",
-        quote: '"El arquitecto que transformó un grupo en una familia de campeones."',
+        role: "El Arquitecto",
+        quote: '"El arquitecto de esta generación que unió a todo un país bajo una ilusión."',
         img: "/assets/scaloni.webp"
       }
     ];
@@ -588,10 +686,13 @@ const ARGENTINA_MATCH_MODE = typeof window.ARGENTINA_MATCH_MODE !== 'undefined' 
         <svg class="match-homenaje-star" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.62L12 2L9.19 8.62L2 9.24L7.45 13.97L5.82 21L12 17.27Z"/>
         </svg>
+        <svg class="match-homenaje-star match-star-contour" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.62L12 2L9.19 8.62L2 9.24L7.45 13.97L5.82 21L12 17.27Z" fill="none" stroke="var(--color-match-dorado)" stroke-width="1.5" stroke-dasharray="3 2" />
+        </svg>
       </div>
-      <h4 class="match-homenaje-title">Campeones del Mundo</h4>
-      <p class="match-homenaje-desc">Una generación que volvió a enamorar al fútbol argentino.</p>
-      <div style="font-size: 0.65rem; font-weight: 800; color: rgba(255,255,255,0.25); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 15px;">90 Minutos • Un Solo Objetivo</div>
+      <h4 class="match-homenaje-title">Tres estrellas nos trajeron hasta acá.</h4>
+      <p class="match-homenaje-desc">Ahora soñamos con una más.</p>
+      <div style="font-size: 0.65rem; font-weight: 800; color: rgba(255,255,255,0.25); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 15px;">DOMINGO 16:00 HS • FINAL DEL MUNDO</div>
     `;
 
     // Insertar justo antes del footer
@@ -603,6 +704,8 @@ const ARGENTINA_MATCH_MODE = typeof window.ARGENTINA_MATCH_MODE !== 'undefined' 
       if (main) main.appendChild(section);
     }
   }
+
+
 
 
   // ==========================================================================
